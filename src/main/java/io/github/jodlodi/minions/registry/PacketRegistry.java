@@ -10,7 +10,10 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class PacketRegistry {
     public static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("2");
+        PayloadRegistrar registrar = event.registrar("3");
+        registrar.playToClient(DeedsScreenPacket.TYPE, DeedsScreenPacket.STREAM_CODEC, DeedsScreenPacket::handle);
+        registrar.playToServer(OpenDeedsPacket.TYPE, OpenDeedsPacket.STREAM_CODEC, OpenDeedsPacket::handle);
+        registrar.playToServer(CommitDeedPacket.TYPE, CommitDeedPacket.STREAM_CODEC, CommitDeedPacket::handle);
         registrar.playToClient(MasterPacket.TYPE, MasterPacket.STREAM_CODEC, MasterPacket.Handler::onMessage);
         registrar.playToClient(BlinkPacket.TYPE, BlinkPacket.STREAM_CODEC, BlinkPacket.Handler::onMessage);
         registrar.playToClient(PoofPacket.TYPE, PoofPacket.STREAM_CODEC, PoofPacket.Handler::onMessage);

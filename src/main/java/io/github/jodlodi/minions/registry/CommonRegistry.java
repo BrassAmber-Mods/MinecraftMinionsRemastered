@@ -1,6 +1,7 @@
 package io.github.jodlodi.minions.registry;
 
 import io.github.jodlodi.minions.MastersStaff;
+import io.github.jodlodi.minions.deeds.DeedProgress;
 import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.capabilities.MasterCapabilityHandler;
@@ -34,6 +35,9 @@ public class CommonRegistry {
 
     public static final DeferredHolder<AttachmentType<?>, AttachmentType<MasterCapabilityHandler>> MASTER_DATA = ATTACHMENT_TYPES.register(
             "master", () -> AttachmentType.serializable(holder -> new MasterCapabilityHandler((Player) holder)).copyOnDeath().build());
+
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<DeedProgress>> DEED_PROGRESS = ATTACHMENT_TYPES.register(
+            "evil_deeds", () -> AttachmentType.serializable(DeedProgress::new).copyOnDeath().build());
 
     public static final DeferredHolder<EntityType<?>, EntityType<Minion>> MINION = ENTITY_TYPES.register("minion", () ->
             EntityType.Builder.<Minion>of((type, level) -> new Minion(level), MobCategory.CREATURE)

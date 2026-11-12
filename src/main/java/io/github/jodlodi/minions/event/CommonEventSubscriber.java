@@ -1,6 +1,8 @@
 package io.github.jodlodi.minions.event;
 
 import io.github.jodlodi.minions.MastersStaff;
+import io.github.jodlodi.minions.deeds.DeedManager;
+import net.minecraft.server.level.ServerPlayer;
 import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.Minion;
@@ -24,6 +26,7 @@ public class CommonEventSubscriber {
     @SubscribeEvent
     public static void onLivingTick(PlayerTickEvent.Post event) {
         CommonRegistry.getMaster(event.getEntity()).ifPresent(IMasterCapability::tick);
+        if (event.getEntity() instanceof ServerPlayer player) DeedManager.tick(player);
     }
 
     @SubscribeEvent

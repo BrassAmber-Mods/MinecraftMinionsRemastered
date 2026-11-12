@@ -1,6 +1,11 @@
 package io.github.jodlodi.minions.event;
 
 import io.github.jodlodi.minions.MinionsRemastered;
+import io.github.jodlodi.minions.registry.ClientRegistry;
+import io.github.jodlodi.minions.network.OpenDeedsPacket;
+import net.minecraft.client.Minecraft;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.registry.CommonRegistry;
 import net.minecraft.client.model.EntityModel;
@@ -21,10 +26,18 @@ import javax.annotation.ParametersAreNonnullByDefault;
 @EventBusSubscriber(modid = MinionsRemastered.MODID, value = Dist.CLIENT)
 public class ClientEventSubscriber {
     @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        while (ClientRegistry.DEED_MENU.consumeClick()) {
+            if (minecraft.player != null && minecraft.screen == null) PacketDistributor.sendToServer(new OpenDeedsPacket());
+        }
+    }
+
+    @SubscribeEvent
     public static void onTooltipEvent(ItemTooltipEvent event) {
         ItemStack item = event.getItemStack();
         if (item.is(CommonRegistry.MASTERS_STAFF.get())) {
-            event.getToolTip().add(Component.literal("THE CRAFTING RECIPE AND THE MOD ARE STILL A WORK IN PROGRESS"));//FIXME
+            event.getToolTip().add(Component.translatable("tooltip.minions_remastered.masters_staff.deeds", ClientRegistry.DEED_MENU.getTranslatedKeyMessage()));
         }
     }
 

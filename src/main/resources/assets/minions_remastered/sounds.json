@@ -1,0 +1,263 @@
+{
+  "deed.spawnsatanistcult": {
+    "subtitle": "deed.minions_remastered.spawnsatanistcult",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/spawnsatanistcult",
+        "stream": true
+      }
+    ]
+  },
+  "deed.gong": {
+    "subtitle": "deed.minions_remastered.gong",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/gong",
+        "stream": true
+      }
+    ]
+  },
+  "deed.corporatesupremacy": {
+    "subtitle": "deed.minions_remastered.corporatesupremacy",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/corporatesupremacy",
+        "stream": true
+      }
+    ]
+  },
+  "deed.baseballbatjingle": {
+    "subtitle": "deed.minions_remastered.baseballbatjingle",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/baseballjingle",
+        "stream": true
+      }
+    ]
+  },
+  "deed.fff": {
+    "subtitle": "deed.minions_remastered.fff",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/fffuuu",
+        "stream": true
+      }
+    ]
+  },
+  "deed.keyboardcat": {
+    "subtitle": "deed.minions_remastered.keyboardcat",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/keyboardcat",
+        "stream": true
+      }
+    ]
+  },
+  "deed.romance": {
+    "subtitle": "deed.minions_remastered.romance",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/romance",
+        "stream": true
+      }
+    ]
+  },
+  "deed.republicans": {
+    "subtitle": "deed.minions_remastered.republicans",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/republicans",
+        "stream": true
+      }
+    ]
+  },
+  "deed.graveyard": {
+    "subtitle": "deed.minions_remastered.graveyard",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/graveyard",
+        "stream": true
+      }
+    ]
+  },
+  "deed.boomheadshot": {
+    "subtitle": "deed.minions_remastered.boomheadshot",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/boomheadshot",
+        "stream": true
+      }
+    ]
+  },
+  "deed.denied": {
+    "subtitle": "deed.minions_remastered.denied",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/denied",
+        "stream": true
+      }
+    ]
+  },
+  "deed.boo": {
+    "subtitle": "deed.minions_remastered.boo",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/boo",
+        "stream": true
+      }
+    ]
+  },
+  "deed.cornholio": {
+    "subtitle": "deed.minions_remastered.cornholio",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/cornholio",
+        "stream": true
+      }
+    ]
+  },
+  "deed.crysomemore": {
+    "subtitle": "deed.minions_remastered.crysomemore",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/crysomemore",
+        "stream": true
+      }
+    ]
+  },
+  "deed.evillaugh": {
+    "subtitle": "deed.minions_remastered.evillaugh",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/evillaugh",
+        "stream": true
+      }
+    ]
+  },
+  "deed.radios": {
+    "subtitle": "deed.minions_remastered.radios",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/radios",
+        "stream": true
+      }
+    ]
+  },
+  "deed.pfft": {
+    "subtitle": "deed.minions_remastered.pfft",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/pfft",
+        "stream": true
+      }
+    ]
+  },
+  "deed.nooo": {
+    "subtitle": "deed.minions_remastered.nooo",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/nooo",
+        "stream": true
+      }
+    ]
+  },
+  "deed.ohyeah": {
+    "subtitle": "deed.minions_remastered.ohyeah",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/ohyeah",
+        "stream": true
+      }
+    ]
+  },
+  "deed.babysealclubbing": {
+    "subtitle": "deed.minions_remastered.babysealclubbing",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/babysealclubbing",
+        "stream": true
+      }
+    ]
+  },
+  "deed.haha": {
+    "subtitle": "deed.minions_remastered.haha",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/haha",
+        "stream": true
+      }
+    ]
+  },
+  "deed.march": {
+    "subtitle": "deed.minions_remastered.march",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/march",
+        "stream": true
+      }
+    ]
+  },
+  "deed.chicken": {
+    "subtitle": "deed.minions_remastered.chicken",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/chicken",
+        "stream": true
+      }
+    ]
+  },
+  "deed.laughter2": {
+    "subtitle": "deed.minions_remastered.laughter2",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/laughter2",
+        "stream": true
+      }
+    ]
+  },
+  "deed.superstarme": {
+    "subtitle": "deed.minions_remastered.superstarme",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/superstarme",
+        "stream": true
+      }
+    ]
+  },
+  "deed.teabagnuns": {
+    "subtitle": "deed.minions_remastered.teabagnuns",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/teabagnuns",
+        "stream": true
+      }
+    ]
+  },
+  "deed.leeroy": {
+    "subtitle": "deed.minions_remastered.leeroy",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/leeroy",
+        "stream": true
+      }
+    ]
+  },
+  "deed.accepted": {
+    "subtitle": "subtitles.minions_remastered.deed_accepted",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/thegodsarepleaseedwithyoursacrifice",
+        "stream": true
+      }
+    ]
+  },
+  "deed.rewarded": {
+    "subtitle": "subtitles.minions_remastered.deed_rewarded",
+    "sounds": [
+      {
+        "name": "minions_remastered:deeds/thegodshaverewardedyouroffering",
+        "stream": true
+      }
+    ]
+  }
+}

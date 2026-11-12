@@ -4,6 +4,11 @@ import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.client.MinionEntityModel;
 import io.github.jodlodi.minions.client.MinionEntityRenderer;
 import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.platform.InputConstants;
+import org.lwjgl.glfw.GLFW;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
@@ -16,6 +21,14 @@ import javax.annotation.ParametersAreNonnullByDefault;
 @ParametersAreNonnullByDefault
 @EventBusSubscriber(modid = MinionsRemastered.MODID, value = Dist.CLIENT)
 public class ClientRegistry {
+    public static final KeyMapping DEED_MENU = new KeyMapping("key.minions_remastered.deeds", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_M, "key.categories.minions_remastered");
+
+    @SubscribeEvent
+    public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
+        event.register(DEED_MENU);
+    }
+
     public static final ModelLayerLocation MINION_MODEL = new ModelLayerLocation(MinionsRemastered.locate("minion_model"), "main");
     public static final ModelLayerLocation MINION_ROBES = new ModelLayerLocation(MinionsRemastered.locate("minion_robes"), "main");
 

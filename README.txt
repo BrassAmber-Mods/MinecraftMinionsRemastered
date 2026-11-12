@@ -17,6 +17,23 @@ Development
 
 On Windows, use gradlew.bat instead of ./gradlew.
 
+Evil deeds and the Master's Staff
+  Press M (rebindable under Controls > Minions Remastered) and choose
+  Commit to Evil. Pick one of three randomly offered original deeds.
+  Each deed costs 2 experience levels, applies temporary blindness, and
+  plays its original audio. After four paid offerings, the gods award a
+  Master's Staff. Further sets of four deeds earn additional staffs.
+  A full inventory causes the reward to drop at your feet.
+  The temporary staff crafting recipe has been removed. Creative access
+  to the staff is still available.
+
+  Paid progress and a deed in progress survive reconnects and player
+  death. The deed timer pauses while offline and resumes on return.
+  The server config minions_remastered-server.toml has evilDeedXPCost:
+  2 by default, 0 for free deeds, or -1 to disable deeds.
+  Original audio attribution and license are in
+  META-INF/ORIGINAL_MINIONS_ASSETS.txt inside the mod JAR.
+
 Staff controls
   The staff menu uses larger buttons and previews and follows Minecraft's
   GUI Scale setting. Tooltips use the normal Minecraft text size.
@@ -26,7 +43,8 @@ Staff controls
   Release over a small adjustment arrow or toggle to change its setting;
   the menu stays open. Right-click and release again to adjust or apply.
 
-This branch ports the existing 1.19.2 feature set to NeoForge 1.21.1.
+This branch ports the 1.19.2 remake to NeoForge 1.21.1 and restores the
+original evil-deed progression for obtaining the Master's Staff.
 It is still a beta and does not include every feature of the original
 AtomicStryker Minions mod. Gameplay, visual, multiplayer, persistence,
 and compatibility verification are deferred to the maintainer.
