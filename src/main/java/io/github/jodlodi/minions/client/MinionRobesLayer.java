@@ -26,11 +26,7 @@ public class MinionRobesLayer<T extends Minion, M extends MinionEntityModel<T>> 
 
     @Override
     public void render(PoseStack stack, MultiBufferSource source, int light, T minion, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch) {
-        int i = minion.getColor();
-        float r = (float)(i >> 16 & 255) / 255.0F;
-        float g = (float)(i >> 8 & 255) / 255.0F;
-        float b = (float)(i & 255) / 255.0F;
-        RenderLayer.coloredCutoutModelCopyLayerRender(this.getParentModel(), this.minionModel, RESOURCE_LOCATION, stack, source, light, minion, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, partialTicks, r, g, b);
+        int color = 0xFF000000 | minion.getColor();
+        RenderLayer.coloredCutoutModelCopyLayerRender(this.getParentModel(), this.minionModel, RESOURCE_LOCATION, stack, source, light, minion, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, partialTicks, color);
     }
-
 }

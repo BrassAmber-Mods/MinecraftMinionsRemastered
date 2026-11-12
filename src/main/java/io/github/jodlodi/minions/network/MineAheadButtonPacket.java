@@ -5,12 +5,23 @@ import io.github.jodlodi.minions.orders.MineAheadOrder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import io.github.jodlodi.minions.MinionsRemastered;
 import net.minecraft.server.level.ServerPlayer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
 public class MineAheadButtonPacket extends AbstractServerboundPacket {
+    public static final CustomPacketPayload.Type<MineAheadButtonPacket> TYPE = new CustomPacketPayload.Type<>(MinionsRemastered.locate("mine_ahead_button_packet"));
+    public static final StreamCodec<FriendlyByteBuf, MineAheadButtonPacket> STREAM_CODEC = StreamCodec.ofMember(MineAheadButtonPacket::encode, MineAheadButtonPacket::new);
+
+    @Override
+    public CustomPacketPayload.Type<MineAheadButtonPacket> type() {
+        return TYPE;
+    }
+
 	protected final boolean paused;
 	protected final BlockPos minPos;
 	protected final BlockPos maxPos;

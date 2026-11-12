@@ -4,6 +4,9 @@ import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.orders.CarryLivingOrder;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import io.github.jodlodi.minions.MinionsRemastered;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
@@ -12,6 +15,14 @@ import java.util.UUID;
 
 @ParametersAreNonnullByDefault
 public class CarryLivingButtonPacket extends AbstractServerboundPacket {
+    public static final CustomPacketPayload.Type<CarryLivingButtonPacket> TYPE = new CustomPacketPayload.Type<>(MinionsRemastered.locate("carry_living_button_packet"));
+    public static final StreamCodec<FriendlyByteBuf, CarryLivingButtonPacket> STREAM_CODEC = StreamCodec.ofMember(CarryLivingButtonPacket::encode, CarryLivingButtonPacket::new);
+
+    @Override
+    public CustomPacketPayload.Type<CarryLivingButtonPacket> type() {
+        return TYPE;
+    }
+
 	private final UUID id;
 
 	public CarryLivingButtonPacket(UUID id) {
@@ -29,7 +40,7 @@ public class CarryLivingButtonPacket extends AbstractServerboundPacket {
 
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
-		Entity entity = player.getLevel().getEntity(this.id);
+		Entity entity = player.serverLevel().getEntity(this.id);
 		if (entity == null) return;
 		if (entity.getVehicle() instanceof Minion minion && capability.isMinion(minion.getUUID())) entity.stopRiding();
 		else if (!entity.isPassenger()) capability.setOrder(new CarryLivingOrder(this.id));

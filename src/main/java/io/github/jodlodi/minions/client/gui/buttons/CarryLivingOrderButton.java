@@ -2,13 +2,13 @@ package io.github.jodlodi.minions.client.gui.buttons;
 
 import io.github.jodlodi.minions.client.gui.MastersStaffScreen;
 import io.github.jodlodi.minions.network.CarryLivingButtonPacket;
-import io.github.jodlodi.minions.registry.PacketRegistry;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -24,7 +24,7 @@ public class CarryLivingOrderButton extends AbstractMastersButton {
     @Override
     public void onPress() {
         if (this.getScreen().target != null) {
-            PacketRegistry.CHANNEL.sendToServer(new CarryLivingButtonPacket(this.getScreen().target.getUUID()));
+            PacketDistributor.sendToServer(new CarryLivingButtonPacket(this.getScreen().target.getUUID()));
             this.screen.onClose();
         }
     }

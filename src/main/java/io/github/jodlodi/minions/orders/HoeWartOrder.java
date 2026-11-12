@@ -20,7 +20,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -52,7 +52,7 @@ public class HoeWartOrder extends AbstractOrder {
     public HoeWartOrder(CompoundTag tag) {
         this.minPos = BlockPos.of(tag.getLong("min"));
         this.maxPos = BlockPos.of(tag.getLong("max"));
-        this.predicate = tag.contains("predicate") ? ForgeRegistries.BLOCKS.getValue(ResourceLocation.tryParse(tag.getString("predicate"))) : null;
+        this.predicate = tag.contains("predicate") ? BuiltInRegistries.BLOCK.get(ResourceLocation.tryParse(tag.getString("predicate"))) : null;
     }
 
     @Override
@@ -60,7 +60,7 @@ public class HoeWartOrder extends AbstractOrder {
         return Util.make(new CompoundTag(), compoundTag -> {
             compoundTag.putLong("min", this.minPos.asLong());
             compoundTag.putLong("max", this.maxPos.asLong());
-            if (this.predicate != null) compoundTag.putString("predicate", String.valueOf(ForgeRegistries.BLOCKS.getKey(this.predicate)));
+            if (this.predicate != null) compoundTag.putString("predicate", String.valueOf(BuiltInRegistries.BLOCK.getKey(this.predicate)));
         });
     }
 
@@ -96,7 +96,7 @@ public class HoeWartOrder extends AbstractOrder {
     public void goalTick(EnactOrderGoal goal) {
         Minion minion = goal.getMinion();
         int id = goal.getMasterCapability().getMinions().indexOf(minion.getUUID());
-        Level level = minion.level;
+        Level level = minion.level();
         PathNavigation navigation = goal.getNavigation();
         LivingEntity owner = goal.getOwner();
 

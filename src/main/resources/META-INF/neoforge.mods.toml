@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="GNU Lesser General Public License"
+
+[[mods]]
+modId="minions_remastered"
+version="${file.jarVersion}"
+displayName="Minions Remastered"
+enumExtensions="META-INF/enumextensions.json"
+credits="Thanks to Atomic Stryker for making the original and for giving permission to remake the mod."
+authors="jodlodi, Brass_McCrafty"
+description='''
+THIS MOD IS A WORK IN PROGRESS
+Thank you for playing though :)
+'''
+
+[[dependencies.minions_remastered]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.266,21.2)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.minions_remastered]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"

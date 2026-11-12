@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "enum": "net/minecraft/world/item/Rarity",
+      "name": "MINIONS_REMASTERED_MASTER",
+      "constructor": "(ILjava/lang/String;Ljava/util/function/UnaryOperator;)V",
+      "parameters": {
+        "class": "io/github/jodlodi/minions/registry/MinionEnumParameters",
+        "field": "MASTER_RARITY"
+      }
+    }
+  ]
+}

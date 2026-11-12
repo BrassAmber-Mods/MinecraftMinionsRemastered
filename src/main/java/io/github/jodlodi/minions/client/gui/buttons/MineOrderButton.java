@@ -3,7 +3,7 @@ package io.github.jodlodi.minions.client.gui.buttons;
 import io.github.jodlodi.minions.MinUtil;
 import io.github.jodlodi.minions.client.gui.MastersStaffScreen;
 import io.github.jodlodi.minions.network.MineAheadButtonPacket;
-import io.github.jodlodi.minions.registry.PacketRegistry;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -14,8 +14,8 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
@@ -47,9 +47,9 @@ public class MineOrderButton extends AbstractAdjustableOrderButton {
 
         BlockPos context = screen.getContext().getBlockPos();
         BlockPos minPos = this.scale == 0 ? context.below() : context.below(this.scale).relative(clockAxis, -this.scale);
-        BlockPos maxPos = this.scale == 0 ? new BlockPos(context) : context.above(this.scale).relative(clockAxis, this.scale);
+        BlockPos maxPos = this.scale == 0 ? context.immutable() : context.above(this.scale).relative(clockAxis, this.scale);
 
-        PacketRegistry.CHANNEL.sendToServer(new MineAheadButtonPacket(this.screen.isShiftKeyDown(), minPos, maxPos, dir, this.depth));
+        PacketDistributor.sendToServer(new MineAheadButtonPacket(this.screen.isShiftKeyDown(), minPos, maxPos, dir, this.depth));
 
         this.screen.onClose();
     }
@@ -66,7 +66,7 @@ public class MineOrderButton extends AbstractAdjustableOrderButton {
 
         BlockPos context = screen.getContext().getBlockPos();
         BlockPos minPos = this.scale == 0 ? context.below() : context.below(this.scale).relative(clockAxis, -this.scale);
-        BlockPos maxPos = this.scale == 0 ? new BlockPos(context) : context.above(this.scale).relative(clockAxis, this.scale);
+        BlockPos maxPos = this.scale == 0 ? context.immutable() : context.above(this.scale).relative(clockAxis, this.scale);
 
         for (BlockPos pos : BlockPos.betweenClosed(minPos, maxPos)) {
             if (player.getRandom().nextInt(12) == 0) {

@@ -69,7 +69,7 @@ public class MinUtil {
         for (Direction direction : Direction.values()) {
             if (direction.getAxis() != Direction.Axis.Y) {
                 BlockPos testPos = center.relative(direction);
-                if (!level.getBlockState(testPos).getMaterial().isSolid()) {
+                if (!level.getBlockState(testPos).blocksMotion()) {
                     BlockPos below = testPos.below();
                     if (level.getBlockState(below).isSolidRender(level, below)) {
                         possiblePositions.add(testPos);
@@ -132,7 +132,7 @@ public class MinUtil {
         for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
             if (random.nextInt(10) == 0 && predicate.test(level.getBlockState(pos))) {
                 for (Direction dir : Direction.values()) {
-                    if (level.getBlockState(pos.relative(dir)).getMaterial().isReplaceable()) {
+                    if (level.getBlockState(pos.relative(dir)).canBeReplaced()) {
                         double x = (double)dir.getStepX() * 0.5D;
                         if (x == 0.0D) x = random.nextDouble() - 0.5D;
                         double y = (double)dir.getStepY() * 0.5D;
@@ -178,10 +178,10 @@ public class MinUtil {
         rgb[1] += (int) (f1 * 255.0F);
         rgb[2] += (int) (f2 * 255.0F);
 
-        float[] frgb = dyeitem.getDyeColor().getTextureDiffuseColors();
-        int i2 = (int) (frgb[0] * 255.0F);
-        int l = (int) (frgb[1] * 255.0F);
-        int i1 = (int) (frgb[2] * 255.0F);
+        int diffuse = dyeitem.getDyeColor().getTextureDiffuseColor();
+        int i2 = (diffuse >> 16) & 255;
+        int l = (diffuse >> 8) & 255;
+        int i1 = diffuse & 255;
         i += Math.max(i2, Math.max(l, i1));
         rgb[0] += i2;
         rgb[1] += l;
@@ -214,7 +214,7 @@ public class MinUtil {
         for (Direction direction : Direction.values()) {
             BlockPos relative = pos.relative(direction);
             FluidState state = level.getFluidState(relative);
-            if (state != Fluids.EMPTY.defaultFluidState() && state.isSource() && level.getBlockState(relative).getMaterial().isReplaceable()) {
+            if (state != Fluids.EMPTY.defaultFluidState() && state.isSource() && level.getBlockState(relative).canBeReplaced()) {
                 MinUtil.stoneUp(relative, level);
             }
         }

@@ -107,7 +107,7 @@ public class MineDownOrder extends AbstractOrder {
     public void goalTick(EnactOrderGoal goal) {
         Minion minion = goal.getMinion();
         int id = goal.getMasterCapability().getMinions().indexOf(minion.getUUID());
-        Level level = minion.level;
+        Level level = minion.level();
         PathNavigation navigation = goal.getNavigation();
         LivingEntity owner = goal.getOwner();
 
@@ -174,8 +174,8 @@ public class MineDownOrder extends AbstractOrder {
 
     protected boolean isBlockBreakableDeluxe(BlockState state, Level level, BlockPos pos, Entity destroyer) {
         if (this.stairs > 0) {
-            BlockState stairCheck = this.stairCheck(pos, destroyer.level.random);
-            if (stairCheck != null && state.getMaterial().isReplaceable()) {
+            BlockState stairCheck = this.stairCheck(pos, destroyer.level().random);
+            if (stairCheck != null && state.canBeReplaced()) {
                 level.setBlock(pos, stairCheck, 3);
                 return false;
             }

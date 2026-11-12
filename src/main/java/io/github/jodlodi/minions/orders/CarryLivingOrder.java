@@ -55,7 +55,7 @@ public class CarryLivingOrder extends AbstractOrder {
     public boolean goalCanContinueToUse(EnactOrderGoal goal) {
         Minion minion = goal.getMinion();
         if (minion.isVehicle()) return false;
-        if (minion.getLevel() instanceof ServerLevel serverLevel) return this.canCarry(serverLevel);
+        if (minion.level() instanceof ServerLevel serverLevel) return this.canCarry(serverLevel);
         return true;
     }
 
@@ -72,7 +72,7 @@ public class CarryLivingOrder extends AbstractOrder {
     @Override
     public void goalTick(EnactOrderGoal goal) {
         Minion minion = goal.getMinion();
-        if (minion.getLevel() instanceof ServerLevel serverLevel) {
+        if (minion.level() instanceof ServerLevel serverLevel) {
             PathNavigation navigation = goal.getNavigation();
 
             Entity victim = serverLevel.getEntity(this.target);

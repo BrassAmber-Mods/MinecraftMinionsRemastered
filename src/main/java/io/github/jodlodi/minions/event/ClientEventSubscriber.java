@@ -7,18 +7,18 @@ import net.minecraft.client.model.EntityModel;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.event.RenderLivingEvent;
-import net.minecraftforge.event.entity.player.ItemTooltipEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
+import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
 @OnlyIn(Dist.CLIENT)
 @ParametersAreNonnullByDefault
-@Mod.EventBusSubscriber(modid = MinionsRemastered.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = MinionsRemastered.MODID, value = Dist.CLIENT)
 public class ClientEventSubscriber {
     @SubscribeEvent
     public static void onTooltipEvent(ItemTooltipEvent event) {

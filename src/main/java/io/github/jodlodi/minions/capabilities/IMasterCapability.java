@@ -5,9 +5,10 @@ import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.orders.AbstractOrder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.common.util.INBTSerializable;
+import net.neoforged.neoforge.common.util.INBTSerializable;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -15,6 +16,20 @@ import java.util.List;
 import java.util.UUID;
 
 public interface IMasterCapability extends INBTSerializable<CompoundTag> {
+
+    CompoundTag serializeNBT();
+
+    void deserializeNBT(CompoundTag tag);
+
+    @Override
+    default CompoundTag serializeNBT(HolderLookup.Provider provider) {
+        return this.serializeNBT();
+    }
+
+    @Override
+    default void deserializeNBT(HolderLookup.Provider provider, CompoundTag tag) {
+        this.deserializeNBT(tag);
+    }
 
     ResourceLocation ID = MinionsRemastered.locate("effect_capability");
 

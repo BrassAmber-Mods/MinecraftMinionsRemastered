@@ -4,6 +4,9 @@ import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.Minion;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import io.github.jodlodi.minions.MinionsRemastered;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
@@ -11,6 +14,14 @@ import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
 public class SummonPacket extends AbstractServerboundPacket {
+    public static final CustomPacketPayload.Type<SummonPacket> TYPE = new CustomPacketPayload.Type<>(MinionsRemastered.locate("summon_packet"));
+    public static final StreamCodec<FriendlyByteBuf, SummonPacket> STREAM_CODEC = StreamCodec.ofMember(SummonPacket::encode, SummonPacket::new);
+
+    @Override
+    public CustomPacketPayload.Type<SummonPacket> type() {
+        return TYPE;
+    }
+
 	private final BlockPos pos;
 	private final int specificID;
 
@@ -38,18 +49,18 @@ public class SummonPacket extends AbstractServerboundPacket {
 	void execute(ServerPlayer player, IMasterCapability capability) {
 		if (capability.minionCount() >= 4) return; //Just in case
 		BlockPos bPos = this.pos;
-		if (!player.level.getBlockState(bPos).getMaterial().isReplaceable()) bPos = bPos.above();
-		if (player.level.getBlockState(bPos).getMaterial().isReplaceable()) {
-			Minion minion = new Minion(player.level);
+		if (!player.level().getBlockState(bPos).canBeReplaced()) bPos = bPos.above();
+		if (player.level().getBlockState(bPos).canBeReplaced()) {
+			Minion minion = new Minion(player.level());
 			minion.setOwnerUUID(player.getUUID());
-			Vec3 pos = Vec3.atLowerCornerOf(bPos).add(player.level.random.nextDouble(), 0.0D, player.level.random.nextDouble());
+			Vec3 pos = Vec3.atLowerCornerOf(bPos).add(player.level().random.nextDouble(), 0.0D, player.level().random.nextDouble());
 			minion.moveTo(pos.x, pos.y, pos.z, player.getYRot(), 0.0F);
 			minion.blink(pos);
 
 			if (this.specificID == -1) capability.addMinion(minion.getUUID());
 			else capability.addSpecificMinion(minion.getUUID(), this.specificID);
 
-			player.level.addFreshEntity(minion);
+			player.level().addFreshEntity(minion);
 			capability.finalizeMinion(minion);
 		}
 	}

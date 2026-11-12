@@ -12,7 +12,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -32,8 +31,15 @@ public class MasterCapabilityHandler implements IMasterCapability {
     private boolean paused = false;
 
     private BlockPos containerBlock = null;
-    private UUID containerEntity = null;//TODO
-    private int clientContainerEntity;
+    private UUID containerEntity = null;
+
+    public MasterCapabilityHandler(Player player) {
+        this.player = player;
+        for (int i = 0; i < 4; i++) {
+            this.minions.add(null);
+            this.inventories.add(new CompoundTag());
+        }
+    }
 
     @Override
     public void setEntity(Player player) {
@@ -47,11 +53,11 @@ public class MasterCapabilityHandler implements IMasterCapability {
 
     @Override
     public void tick() {
-        if (!this.player.level.isClientSide && !this.synced) {
+        if (!this.player.level().isClientSide && !this.synced) {
             this.sendUpdatePacket();
             this.synced = true;
         }
-        if (this.order != null) this.order.tick(this, player, this.player.level);
+        if (this.order != null) this.order.tick(this, player, this.player.level());
     }
 
     @Override
@@ -77,25 +83,25 @@ public class MasterCapabilityHandler implements IMasterCapability {
         for (int i = 0; i < size; i++) {
             if (this.minions.get(i) == null) {
                 this.minions.set(i, uuid);
-                if (!this.player.level.isClientSide) this.sendUpdatePacket();
+                if (!this.player.level().isClientSide) this.sendUpdatePacket();
                 return;
             }
         }
 
         if (size < 4) this.minions.add(uuid);
-        if (!this.player.level.isClientSide) this.sendUpdatePacket();
+        if (!this.player.level().isClientSide) this.sendUpdatePacket();
     }
 
     @Override
     public void addSpecificMinion(UUID uuid, int specificID) {
         this.minions.set(specificID, uuid);
-        if (!this.player.level.isClientSide) this.sendUpdatePacket();
+        if (!this.player.level().isClientSide) this.sendUpdatePacket();
     }
 
     @Override
     public void removeMinion(UUID uuid) {
         this.minions.set(this.minions.indexOf(uuid), null);
-        if (!this.player.level.isClientSide) this.sendUpdatePacket();
+        if (!this.player.level().isClientSide) this.sendUpdatePacket();
     }
 
     @Override
@@ -104,7 +110,7 @@ public class MasterCapabilityHandler implements IMasterCapability {
             int size = this.minions.size();
             if (size > 0) this.minions.remove(size - 1);
         }
-        if (!this.player.level.isClientSide) this.sendUpdatePacket();
+        if (!this.player.level().isClientSide) this.sendUpdatePacket();
     }
 
     @Override
@@ -121,7 +127,7 @@ public class MasterCapabilityHandler implements IMasterCapability {
     public void setOrder(@Nullable AbstractOrder order) {
         this.order = order;
         this.paused = false;
-        if (!this.player.level.isClientSide) this.sendUpdatePacket();
+        if (!this.player.level().isClientSide) this.sendUpdatePacket();
     }
 
     @Override
@@ -133,7 +139,7 @@ public class MasterCapabilityHandler implements IMasterCapability {
     @Override
     public void setContainerBlock(@Nullable BlockPos pos) {
         this.containerBlock = pos;
-        if (!this.player.level.isClientSide) this.sendUpdatePacket();
+        if (!this.player.level().isClientSide) this.sendUpdatePacket();
     }
 
     @Override
@@ -145,7 +151,7 @@ public class MasterCapabilityHandler implements IMasterCapability {
     @Override
     public void setContainerEntity(@Nullable UUID uuid) {
         this.containerEntity = uuid;
-        if (!this.player.level.isClientSide) this.sendUpdatePacket();
+        if (!this.player.level().isClientSide) this.sendUpdatePacket();
     }
 
     @Override
@@ -164,7 +170,7 @@ public class MasterCapabilityHandler implements IMasterCapability {
             String s = inventory.getString("CustomName");
 
             try {
-                minion.setCustomName(Component.Serializer.fromJson(s));
+                minion.setCustomName(Component.Serializer.fromJson(s, this.player.registryAccess()));
             } catch (Exception exception) {
                 MinionsRemastered.LOGGER.warn("Failed to parse minion custom name {}", s, exception);
             }
@@ -187,7 +193,7 @@ public class MasterCapabilityHandler implements IMasterCapability {
 
     @Override
     public void sendUpdatePacket() {
-        PacketRegistry.CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> this.player), new MasterPacket(this.player, this));
+        PacketRegistry.sendToPlayer(this.player, new MasterPacket(this.player, this));
     }
 
     @Override
@@ -222,6 +228,8 @@ public class MasterCapabilityHandler implements IMasterCapability {
 
     @Override
     public void deserializeNBT(CompoundTag tag) {
+        this.minions.clear();
+        this.inventories.clear();
         for (int i = 0; i < 4; i++) {
             if (tag.contains("MinionUUID" + i)) {
                 this.minions.add(tag.getUUID("MinionUUID" + i));

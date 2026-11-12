@@ -6,13 +6,11 @@ import io.github.jodlodi.minions.minion.goals.*;
 import io.github.jodlodi.minions.network.BlinkPacket;
 import io.github.jodlodi.minions.network.PoofPacket;
 import io.github.jodlodi.minions.registry.CommonRegistry;
-import io.github.jodlodi.minions.registry.PacketRegistry;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -36,17 +34,15 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fluids.FluidType;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.minecraft.world.entity.EntityDimensions;
+import net.neoforged.neoforge.fluids.FluidType;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -75,12 +71,12 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(DATA_OWNER_UUID, Optional.empty());
-        this.entityData.define(DATA_BLINKING, 0);
-        this.entityData.define(DATA_COLOR, DEFAULT_RED);
-        this.entityData.define(DATA_SITTING, false);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_OWNER_UUID, Optional.empty());
+        builder.define(DATA_BLINKING, 0);
+        builder.define(DATA_COLOR, DEFAULT_RED);
+        builder.define(DATA_SITTING, false);
     }
 
     @Override
@@ -97,7 +93,6 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     @Override
     public void aiStep() {
         this.updateSwingTime();
-        this.dimensions = this.getDimensions(this.getPose());
         super.aiStep();
     }
 
@@ -108,19 +103,19 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     @Override
     public void tick() {
-        if (!this.level.isClientSide) {
+        if (!this.level().isClientSide) {
             int blink = this.entityData.get(DATA_BLINKING);
             if (blink > -BLINK_COOLDOWN) {
                 this.entityData.set(DATA_BLINKING, blink - 1);
                 this.getLookControl().tick();
                 if (blink == 1) {
-                    PacketRegistry.CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> this), new BlinkPacket(this.getId(), this.position()));
+                    PacketDistributor.sendToPlayersTrackingEntityAndSelf(this, new BlinkPacket(this.getId(), this.position()));
                 }
             }
 
             LivingEntity owner = this.getOwner();
             if (owner != null) {
-                owner.getCapability(CommonRegistry.MASTER_CAPABILITY).ifPresent(this::accept);
+                CommonRegistry.getMaster(owner).ifPresent(this::accept);
             }
         }
 
@@ -129,7 +124,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     @Override
     public void remove(RemovalReason removalReason) {
-        PacketRegistry.CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> this), new PoofPacket(this.getId()));
+        if (!this.level().isClientSide) PacketDistributor.sendToPlayersTrackingEntityAndSelf(this, new PoofPacket(this.getId()));
         super.remove(removalReason);
     }
 
@@ -149,7 +144,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     public void setCustomName(@Nullable Component component) {
         this.getMastersCapability().ifPresent(masterCapability -> {
             CompoundTag tag = masterCapability.getInventory(this.getMinionID(masterCapability));
-            tag.putString("CustomName", Component.Serializer.toJson(component));
+            tag.putString("CustomName", Component.Serializer.toJson(component, this.registryAccess()));
         });
         super.setCustomName(component);
     }
@@ -166,7 +161,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
                 this.entityData.set(DATA_COLOR, newColor);
             }
             if (!player.getAbilities().instabuild) item.shrink(1);
-            return InteractionResult.sidedSuccess(this.level.isClientSide);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
 
         return super.mobInteract(player, hand);
@@ -180,26 +175,26 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     @Override
     protected void pickUpItem(ItemEntity item) {
-        this.getMastersCapability().ifPresent(masterCapability -> {
-            if (masterCapability.getContainerBlock() != null) {
-                BlockEntity entity = this.level.getBlockEntity(masterCapability.getContainerBlock());
-                if (entity != null && entity.getCapability(ForgeCapabilities.ITEM_HANDLER).isPresent()) {
-                    entity.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(itemHandler -> this.storeItem(itemHandler, item));
+        this.getMastersCapability().ifPresent(master -> {
+            BlockPos storage = master.getContainerBlock();
+            if (storage != null) {
+                IItemHandler handler = this.level().getCapability(Capabilities.ItemHandler.BLOCK, storage, null);
+                if (handler != null) {
+                    this.storeItem(handler, item);
                     return;
-                } else masterCapability.setContainerBlock(null);
+                }
+                master.setContainerBlock(null);
             }
-            if (this.level instanceof ServerLevel serverLevel) {
-                Entity entity = serverLevel.getEntity(masterCapability.getContainerEntity());
-                if (entity != null && (!(entity instanceof LivingEntity living) || !living.isDeadOrDying())) {
-                    entity.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(itemHandler -> this.storeItem(itemHandler, item));
-                    if (entity instanceof LivingEntity livingEntity) livingEntity.onItemPickup(item);
-                } else {
-                    masterCapability.setContainerEntity(null);
-                    entity = serverLevel.getEntity(masterCapability.getContainerEntity());
-                    if (entity != null) {
-                        entity.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(itemHandler -> this.storeItem(itemHandler, item));
-                        if (entity instanceof LivingEntity livingEntity) livingEntity.onItemPickup(item);
-                    }
+            if (this.level() instanceof ServerLevel serverLevel) {
+                Entity target = serverLevel.getEntity(master.getContainerEntity());
+                if (target == null || target instanceof LivingEntity living && living.isDeadOrDying()) {
+                    master.setContainerEntity(null);
+                    target = serverLevel.getEntity(master.getContainerEntity());
+                }
+                if (target != null) {
+                    IItemHandler handler = target.getCapability(Capabilities.ItemHandler.ENTITY);
+                    if (handler != null) this.storeItem(handler, item);
+                    if (target instanceof LivingEntity living) living.onItemPickup(item);
                 }
             }
         });
@@ -221,7 +216,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
                     if (firstProperStack == -1 && outputStack.isEmpty()) {
                         firstProperStack = j; //We reference the index of the first empty slot, in case there is no stacks that aren't at max size
-                    } else if (ItemStack.isSameItemSameTags(inputStack, outputStack)
+                    } else if (ItemStack.isSameItemSameComponents(inputStack, outputStack)
                             && outputStack.getCount() < outputStack.getMaxStackSize()
                             && outputStack.getCount() < outputIItemHandler.getSlotLimit(j)) {
                         firstProperStack = j;
@@ -303,7 +298,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     }
 
     public boolean isEnactingOrder() {
-        return this.goalSelector.getRunningGoals().anyMatch(wrappedGoal -> wrappedGoal.getGoal() instanceof EnactOrderGoal);
+        return this.goalSelector.getAvailableGoals().stream().anyMatch(goal -> goal.isRunning() && goal.getGoal() instanceof EnactOrderGoal);
     }
 
     public void blink(BlockPos pos) {
@@ -315,7 +310,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     }
 
     public void blink(double x, double y, double z, float f, float g) {
-        PacketRegistry.CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> this), new BlinkPacket(this.getId(), this.position()));
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(this, new BlinkPacket(this.getId(), this.position()));
         this.moveTo(x, y, z, f, g);
         this.entityData.set(DATA_BLINKING, 15);
     }
@@ -349,11 +344,11 @@ public class Minion extends PathfinderMob implements OwnableEntity {
             speed *= f1;
         }
 
-        if (this.isEyeInFluid(FluidTags.WATER) && !EnchantmentHelper.hasAquaAffinity(this)) {
-            speed /= 5.0F;
+        if (this.isEyeInFluid(FluidTags.WATER)) {
+            speed *= (float)this.getAttributeValue(Attributes.SUBMERGED_MINING_SPEED);
         }
 
-        if (!this.onGround) {
+        if (!this.onGround()) {
             speed /= 5.0F;
         }
 
@@ -361,8 +356,8 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     }
 
     @Override
-    public double getPassengersRidingOffset() {
-        return (double)this.dimensions.height * 0.75D * (this.getSit() ? 0.9D : 1.2D);
+    protected Vec3 getPassengerAttachmentPoint(Entity passenger, EntityDimensions dimensions, float scale) {
+        return new Vec3(0.0D, dimensions.height() * 0.75D * (this.getSit() ? 0.9D : 1.2D), 0.0D);
     }
 
     @Override
@@ -385,7 +380,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     public LivingEntity getOwner() {
         try {
             UUID uuid = this.getOwnerUUID();
-            return uuid == null ? null : this.level.getPlayerByUUID(uuid);
+            return uuid == null ? null : this.level().getPlayerByUUID(uuid);
         } catch (IllegalArgumentException illegalargumentexception) {
             return null;
         }
@@ -394,7 +389,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     public Optional<IMasterCapability> getMastersCapability() {
         LivingEntity owner = this.getOwner();
         if (owner == null) return Optional.empty();
-        else return owner.getCapability(CommonRegistry.MASTER_CAPABILITY).resolve();
+        else return CommonRegistry.getMaster(owner);
     }
 
     @Override
@@ -423,11 +418,6 @@ public class Minion extends PathfinderMob implements OwnableEntity {
         this.setSit(tag.contains("Sit") && tag.getBoolean("Sit"));
     }
 
-    @Override
-    public Packet<?> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
     private void accept(@NotNull IMasterCapability iMasterCapability) {
         if (!iMasterCapability.isMinion(this.getUUID())) {
             this.discard();
@@ -435,62 +425,58 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public void travel(Vec3 vec3) {
-        this.maxUpStep = 1.15F;
-        if (this.isAlive() && !this.sittingOrRiding()) {
-            Entity entity = this.getControllingPassenger();
-            if (this.isVehicle() && entity instanceof Player) {
-                this.setYRot(entity.getYRot());
-                this.yRotO = this.getYRot();
-                this.setXRot(entity.getXRot() * 0.5F);
-                this.setRot(this.getYRot(), this.getXRot());
-                this.yBodyRot = this.getYRot();
-                this.yHeadRot = this.getYRot();
-                this.flyingSpeed = this.getSpeed() * 0.1F;
-
-                if (this.isControlledByLocalInstance()) {
-                    float f = this.getSteeringSpeed();
-
-                    this.setSpeed(f);
-                    super.travel(new Vec3(0.0D, 0.0D, 1.0D));
-                    this.lerpSteps = 0;
-                } else {
-                    this.calculateEntityAnimation(this, false);
-                    this.setDeltaMovement(Vec3.ZERO);
-                }
-
-                this.tryCheckInsideBlocks();
-                return;
-            }
-        }
-        this.flyingSpeed = 0.02F;
-        super.travel(vec3);
+    public void travel(Vec3 input) {
+        super.travel(this.sittingOrRiding() ? Vec3.ZERO : input);
     }
 
+    @Override
+    protected void tickRidden(Player player, Vec3 input) {
+        super.tickRidden(player, input);
+        this.setYRot(player.getYRot());
+        this.yRotO = this.getYRot();
+        this.setXRot(player.getXRot() * 0.5F);
+        this.setRot(this.getYRot(), this.getXRot());
+        this.yBodyRot = this.getYRot();
+        this.yHeadRot = this.getYRot();
+    }
+
+    @Override
+    protected Vec3 getRiddenInput(Player player, Vec3 input) {
+        return new Vec3(0.0D, 0.0D, 1.0D);
+    }
+
+    @Override
+    protected float getRiddenSpeed(Player player) {
+        return this.getSteeringSpeed();
+    }
+
+    @Override
+    protected float getFlyingSpeed() {
+        return this.getControllingPassenger() != null ? this.getSpeed() * 0.1F : super.getFlyingSpeed();
+    }
 
     @Override
     public Vec3 collide(Vec3 vec34) {
         AABB aabb = MinUtil.getRidingAABB(this);
-        List<VoxelShape> list = this.level.getEntityCollisions(this, aabb.expandTowards(vec34));
-        Vec3 vec3 = vec34.lengthSqr() == 0.0D ? vec34 : collideBoundingBox(this, vec34, aabb, this.level, list);
+        List<VoxelShape> list = this.level().getEntityCollisions(this, aabb.expandTowards(vec34));
+        Vec3 vec3 = vec34.lengthSqr() == 0.0D ? vec34 : collideBoundingBox(this, vec34, aabb, this.level(), list);
         boolean flag = vec34.x != vec3.x;
         boolean flag1 = vec34.y != vec3.y;
         boolean flag2 = vec34.z != vec3.z;
-        boolean flag3 = this.onGround || flag1 && vec34.y < 0.0D;
-        float stepHeight = getStepHeight();
+        boolean flag3 = this.onGround() || flag1 && vec34.y < 0.0D;
+        float stepHeight = this.maxUpStep();
         if (stepHeight > 0.0F && flag3 && (flag || flag2)) {
-            Vec3 vec31 = collideBoundingBox(this, new Vec3(vec34.x, stepHeight, vec34.z), aabb, this.level, list);
-            Vec3 vec32 = collideBoundingBox(this, new Vec3(0.0D, stepHeight, 0.0D), aabb.expandTowards(vec34.x, 0.0D, vec34.z), this.level, list);
+            Vec3 vec31 = collideBoundingBox(this, new Vec3(vec34.x, stepHeight, vec34.z), aabb, this.level(), list);
+            Vec3 vec32 = collideBoundingBox(this, new Vec3(0.0D, stepHeight, 0.0D), aabb.expandTowards(vec34.x, 0.0D, vec34.z), this.level(), list);
             if (vec32.y < (double)stepHeight) {
-                Vec3 vec33 = collideBoundingBox(this, new Vec3(vec34.x, 0.0D, vec34.z), aabb.move(vec32), this.level, list).add(vec32);
+                Vec3 vec33 = collideBoundingBox(this, new Vec3(vec34.x, 0.0D, vec34.z), aabb.move(vec32), this.level(), list).add(vec32);
                 if (vec33.horizontalDistanceSqr() > vec31.horizontalDistanceSqr()) {
                     vec31 = vec33;
                 }
             }
 
             if (vec31.horizontalDistanceSqr() > vec3.horizontalDistanceSqr()) {
-                return vec31.add(collideBoundingBox(this, new Vec3(0.0D, -vec31.y + vec34.y, 0.0D), aabb.move(vec31), this.level, list));
+                return vec31.add(collideBoundingBox(this, new Vec3(0.0D, -vec31.y + vec34.y, 0.0D), aabb.move(vec31), this.level(), list));
             }
         }
 
@@ -504,9 +490,9 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     }
 
     @Nullable
-    public Entity getControllingPassenger() {
+    public LivingEntity getControllingPassenger() {
         Entity entity = this.getFirstPassenger();
-        return entity != null && this.canBeControlledBy(entity) ? entity : null;
+        return entity instanceof LivingEntity living && this.canBeControlledBy(living) ? living : null;
     }
 
     protected boolean canBeControlledBy(Entity entity) {

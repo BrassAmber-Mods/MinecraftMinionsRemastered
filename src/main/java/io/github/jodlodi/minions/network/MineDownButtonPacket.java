@@ -4,12 +4,23 @@ import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.orders.MineDownOrder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import io.github.jodlodi.minions.MinionsRemastered;
 import net.minecraft.server.level.ServerPlayer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
 public class MineDownButtonPacket extends AbstractServerboundPacket {
+    public static final CustomPacketPayload.Type<MineDownButtonPacket> TYPE = new CustomPacketPayload.Type<>(MinionsRemastered.locate("mine_down_button_packet"));
+    public static final StreamCodec<FriendlyByteBuf, MineDownButtonPacket> STREAM_CODEC = StreamCodec.ofMember(MineDownButtonPacket::encode, MineDownButtonPacket::new);
+
+    @Override
+    public CustomPacketPayload.Type<MineDownButtonPacket> type() {
+        return TYPE;
+    }
+
 	protected final boolean paused;
 	protected final BlockPos minPos;
 	protected final BlockPos maxPos;

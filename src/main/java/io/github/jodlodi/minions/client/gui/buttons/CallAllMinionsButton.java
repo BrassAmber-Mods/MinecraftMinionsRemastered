@@ -4,14 +4,14 @@ import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.client.gui.MastersStaffScreen;
 import io.github.jodlodi.minions.network.BanishPacket;
 import io.github.jodlodi.minions.network.SummonPacket;
-import io.github.jodlodi.minions.registry.PacketRegistry;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.UUID;
@@ -33,8 +33,8 @@ public class CallAllMinionsButton extends AbstractMastersButton {
         for (UUID uuid : this.capability.getMinions()) {
             if (uuid != null) {
                 int index = this.capability.getMinions().indexOf(uuid);
-                PacketRegistry.CHANNEL.sendToServer(new BanishPacket(uuid));
-                PacketRegistry.CHANNEL.sendToServer(new SummonPacket(pos, index));
+                PacketDistributor.sendToServer(new BanishPacket(uuid));
+                PacketDistributor.sendToServer(new SummonPacket(pos, index));
             }
         }
         this.screen.onClose();

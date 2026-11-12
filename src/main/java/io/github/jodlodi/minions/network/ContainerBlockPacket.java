@@ -3,12 +3,23 @@ package io.github.jodlodi.minions.network;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import io.github.jodlodi.minions.MinionsRemastered;
 import net.minecraft.server.level.ServerPlayer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
 public class ContainerBlockPacket extends AbstractServerboundPacket {
+    public static final CustomPacketPayload.Type<ContainerBlockPacket> TYPE = new CustomPacketPayload.Type<>(MinionsRemastered.locate("container_block_packet"));
+    public static final StreamCodec<FriendlyByteBuf, ContainerBlockPacket> STREAM_CODEC = StreamCodec.ofMember(ContainerBlockPacket::encode, ContainerBlockPacket::new);
+
+    @Override
+    public CustomPacketPayload.Type<ContainerBlockPacket> type() {
+        return TYPE;
+    }
+
 	private final BlockPos pos;
 
 	public ContainerBlockPacket(BlockPos pos) {

@@ -9,7 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.pathfinder.BlockPathTypes;
+import net.minecraft.world.level.pathfinder.PathType;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.EnumSet;
@@ -31,7 +31,7 @@ public class EnactOrderGoal extends Goal {
 
     public EnactOrderGoal(Minion minion, double speedModifier) {
         this.minion = minion;
-        this.level = minion.level;
+        this.level = minion.level();
         this.speedModifier = speedModifier;
         this.navigation = minion.getNavigation();
         this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
@@ -43,7 +43,7 @@ public class EnactOrderGoal extends Goal {
         LivingEntity living = this.minion.getOwner();
         if (living != null) {
             this.owner = living;
-            Optional<IMasterCapability> oma = living.getCapability(CommonRegistry.MASTER_CAPABILITY).resolve();
+            Optional<IMasterCapability> oma = CommonRegistry.getMaster(living);
             if (oma.isPresent()) {
                 this.masterCapability = oma.get();
                 if (this.masterCapability.isPaused()) return false;
@@ -66,15 +66,15 @@ public class EnactOrderGoal extends Goal {
     @Override
     public void start() {
         this.timeToRecalcPath = 0;
-        this.oldWaterCost = this.minion.getPathfindingMalus(BlockPathTypes.WATER);
-        this.minion.setPathfindingMalus(BlockPathTypes.WATER, 0.0F);
+        this.oldWaterCost = this.minion.getPathfindingMalus(PathType.WATER);
+        this.minion.setPathfindingMalus(PathType.WATER, 0.0F);
         this.order.goalStart(this);
     }
 
     @Override
     public void stop() {
         this.navigation.stop();
-        this.minion.setPathfindingMalus(BlockPathTypes.WATER, this.oldWaterCost);
+        this.minion.setPathfindingMalus(PathType.WATER, this.oldWaterCost);
         this.order.goalStop(this);
         this.owner = null;
         this.order = null;

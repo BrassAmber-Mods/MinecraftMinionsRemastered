@@ -3,13 +3,13 @@ package io.github.jodlodi.minions.client.gui.buttons;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.client.gui.MastersStaffScreen;
 import io.github.jodlodi.minions.network.SummonPacket;
-import io.github.jodlodi.minions.registry.PacketRegistry;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
@@ -27,7 +27,7 @@ public class SummonButton extends AbstractMastersButton {
 
     @Override
     public void onPress() {
-        PacketRegistry.CHANNEL.sendToServer(new SummonPacket(this.getScreen().getContext().getBlockPos()));
+        PacketDistributor.sendToServer(new SummonPacket(this.getScreen().getContext().getBlockPos()));
         this.screen.onClose();
     }
 
@@ -42,7 +42,7 @@ public class SummonButton extends AbstractMastersButton {
     }
 
     @Override
-    protected List<MutableComponent> getTooltip() {
+    protected List<MutableComponent> getTooltipLines() {
         return List.of(Component.literal("Current Count: " + this.capability.minionCount()).withStyle(ChatFormatting.GRAY));
     }
 }

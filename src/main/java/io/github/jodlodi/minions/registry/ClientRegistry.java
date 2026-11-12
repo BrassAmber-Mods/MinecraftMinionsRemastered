@@ -5,16 +5,16 @@ import io.github.jodlodi.minions.client.MinionEntityModel;
 import io.github.jodlodi.minions.client.MinionEntityRenderer;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.entity.EntityRenderers;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
-@Mod.EventBusSubscriber(modid = MinionsRemastered.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@EventBusSubscriber(modid = MinionsRemastered.MODID, value = Dist.CLIENT)
 public class ClientRegistry {
     public static final ModelLayerLocation MINION_MODEL = new ModelLayerLocation(MinionsRemastered.locate("minion_model"), "main");
     public static final ModelLayerLocation MINION_ROBES = new ModelLayerLocation(MinionsRemastered.locate("minion_robes"), "main");

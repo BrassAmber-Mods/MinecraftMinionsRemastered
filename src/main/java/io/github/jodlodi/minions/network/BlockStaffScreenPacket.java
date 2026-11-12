@@ -6,18 +6,28 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import io.github.jodlodi.minions.MinionsRemastered;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.function.Supplier;
 
 @ParametersAreNonnullByDefault
-public class BlockStaffScreenPacket {
+public class BlockStaffScreenPacket implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<BlockStaffScreenPacket> TYPE = new CustomPacketPayload.Type<>(MinionsRemastered.locate("block_staff_screen_packet"));
+    public static final StreamCodec<FriendlyByteBuf, BlockStaffScreenPacket> STREAM_CODEC = StreamCodec.ofMember(BlockStaffScreenPacket::encode, BlockStaffScreenPacket::new);
+
+    @Override
+    public CustomPacketPayload.Type<BlockStaffScreenPacket> type() {
+        return TYPE;
+    }
+
     private final int player;
     private final double x;
     private final double y;
@@ -59,8 +69,8 @@ public class BlockStaffScreenPacket {
 
     public static class Handler {
         @SuppressWarnings("Convert2Lambda")
-        public static void onMessage(BlockStaffScreenPacket message, Supplier<NetworkEvent.Context> ctx) {
-            ctx.get().enqueueWork(new Runnable() {
+        public static void onMessage(BlockStaffScreenPacket message, IPayloadContext ctx) {
+            ctx.enqueueWork(new Runnable() {
                 @Override
                 public void run() {
                     Minecraft minecraft = Minecraft.getInstance();
@@ -76,7 +86,7 @@ public class BlockStaffScreenPacket {
                 }
             });
 
-            ctx.get().setPacketHandled(true);
+
         }
     }
 }

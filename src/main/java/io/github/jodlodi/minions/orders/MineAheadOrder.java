@@ -99,7 +99,7 @@ public class MineAheadOrder extends AbstractOrder {
     public void goalTick(EnactOrderGoal goal) {
         Minion minion = goal.getMinion();
         int id = goal.getMasterCapability().getMinions().indexOf(minion.getUUID());
-        Level level = minion.level;
+        Level level = minion.level();
         PathNavigation navigation = goal.getNavigation();
         LivingEntity owner = goal.getOwner();
 

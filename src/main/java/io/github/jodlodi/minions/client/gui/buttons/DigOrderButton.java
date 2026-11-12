@@ -3,7 +3,7 @@ package io.github.jodlodi.minions.client.gui.buttons;
 import io.github.jodlodi.minions.MinUtil;
 import io.github.jodlodi.minions.client.gui.MastersStaffScreen;
 import io.github.jodlodi.minions.network.MineDownButtonPacket;
-import io.github.jodlodi.minions.registry.PacketRegistry;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.client.Minecraft;
@@ -15,8 +15,8 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
@@ -43,7 +43,7 @@ public class DigOrderButton extends AbstractAdjustableOrderButton {
     public void onPress() {
         MastersStaffScreen.BlockStaffScreen screen = this.getScreen();
         LocalPlayer player = screen.getPlayer();
-        float partialTick = Minecraft.getInstance().getPartialTick();
+        float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
 
         int offset = this.size / 2;
         int trueSet = (this.size + 1) % 2;
@@ -77,7 +77,7 @@ public class DigOrderButton extends AbstractAdjustableOrderButton {
             index = 3;
         }
 
-        PacketRegistry.CHANNEL.sendToServer(new MineDownButtonPacket(this.screen.isShiftKeyDown(), minPos, maxPos, index, this.stairs));
+        PacketDistributor.sendToServer(new MineDownButtonPacket(this.screen.isShiftKeyDown(), minPos, maxPos, index, this.stairs));
 
         this.screen.onClose();
     }
@@ -87,7 +87,7 @@ public class DigOrderButton extends AbstractAdjustableOrderButton {
         super.onSelectedTick();
         MastersStaffScreen.BlockStaffScreen screen = this.getScreen();
         LocalPlayer player = screen.getPlayer();
-        float partialTick = Minecraft.getInstance().getPartialTick();
+        float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
         ClientLevel level = player.clientLevel;
         int offset = this.size / 2;
         int trueSet = (this.size + 1) % 2;

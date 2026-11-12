@@ -8,33 +8,31 @@ import io.github.jodlodi.minions.network.EntityStaffScreenPacket;
 import io.github.jodlodi.minions.registry.CommonRegistry;
 import io.github.jodlodi.minions.registry.PacketRegistry;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
-@Mod.EventBusSubscriber(modid = MinionsRemastered.MODID)
+@EventBusSubscriber(modid = MinionsRemastered.MODID)
 public class CommonEventSubscriber {
     @SubscribeEvent
-    public static void onLivingTick(LivingEvent.LivingTickEvent event) {
-        event.getEntity().getCapability(CommonRegistry.MASTER_CAPABILITY).ifPresent(IMasterCapability::tick);
+    public static void onLivingTick(PlayerTickEvent.Post event) {
+        CommonRegistry.getMaster(event.getEntity()).ifPresent(IMasterCapability::tick);
     }
 
     @SubscribeEvent
     public static void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
         Player player = event.getEntity();
         if (player != null && player.getItemInHand(event.getHand()).getItem() instanceof MastersStaff) {
-            if (!player.level.isClientSide) {
-                player.getCapability(CommonRegistry.MASTER_CAPABILITY).ifPresent(IMasterCapability::sendUpdatePacket);
-                PacketRegistry.CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new EntityStaffScreenPacket(event.getTarget(), player));
+            if (!player.level().isClientSide) {
+                CommonRegistry.getMaster(player).ifPresent(IMasterCapability::sendUpdatePacket);
+                PacketRegistry.sendToPlayer(player, new EntityStaffScreenPacket(event.getTarget(), player));
             }
             event.setCancellationResult(InteractionResult.CONSUME);
             event.setCanceled(true);
@@ -42,23 +40,10 @@ public class CommonEventSubscriber {
     }
 
     @SubscribeEvent
-    public static void onLivingAttack(LivingAttackEvent event) {
-        if (event.getSource() == DamageSource.IN_WALL && event.getEntity().getVehicle() instanceof Minion) {
+    public static void onLivingAttack(LivingIncomingDamageEvent event) {
+        if (event.getSource().is(DamageTypes.IN_WALL) && event.getEntity().getVehicle() instanceof Minion) {
             event.setCanceled(true);
         }
     }
 
-    @SubscribeEvent
-    public static void onPlayerEventClone(PlayerEvent.Clone event) {
-        Player original = event.getOriginal();
-        Player player = event.getEntity();
-
-        original.reviveCaps();
-
-        original.getCapability(CommonRegistry.MASTER_CAPABILITY).ifPresent(oldCap ->
-                player.getCapability(CommonRegistry.MASTER_CAPABILITY).ifPresent(newCap ->
-                        newCap.deserializeNBT(oldCap.serializeNBT())));
-
-        original.invalidateCaps();
-    }
 }

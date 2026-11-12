@@ -4,7 +4,7 @@ import io.github.jodlodi.minions.MinUtil;
 import io.github.jodlodi.minions.client.gui.MastersStaffScreen;
 import io.github.jodlodi.minions.network.HoeWartButtonPacket;
 import io.github.jodlodi.minions.orders.HoeWartOrder;
-import io.github.jodlodi.minions.registry.PacketRegistry;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.client.Minecraft;
@@ -14,8 +14,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
@@ -42,7 +42,7 @@ public class HoeWartButton extends AbstractAdjustableOrderButton {
     public void onPress() {
         MastersStaffScreen.BlockStaffScreen screen = this.getScreen();
         LocalPlayer player = screen.getPlayer();
-        float partialTick = Minecraft.getInstance().getPartialTick();
+        float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
 
         int offset = this.range / 2;
         int trueSet = (this.range + 1) % 2;
@@ -54,7 +54,7 @@ public class HoeWartButton extends AbstractAdjustableOrderButton {
         BlockPos minPos = context.north(offset - (south ? trueSet : 0)).west(offset - (east ? trueSet : 0)).below(16);
         BlockPos maxPos = context.south(offset - (!south ? trueSet : 0)).east(offset - (!east ? trueSet : 0)).above(16);
 
-        PacketRegistry.CHANNEL.sendToServer(new HoeWartButtonPacket(this.screen.isShiftKeyDown(), minPos, maxPos, this.allWart ? null : this.getScreen().target.getBlock()));
+        PacketDistributor.sendToServer(new HoeWartButtonPacket(this.screen.isShiftKeyDown(), minPos, maxPos, this.allWart ? null : this.getScreen().target.getBlock()));
 
         this.screen.onClose();
     }
@@ -64,7 +64,7 @@ public class HoeWartButton extends AbstractAdjustableOrderButton {
         super.onSelectedTick();
         MastersStaffScreen.BlockStaffScreen screen = this.getScreen();
         LocalPlayer player = screen.getPlayer();
-        float partialTick = Minecraft.getInstance().getPartialTick();
+        float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
         ClientLevel level = player.clientLevel;
         int offset = this.range / 2;
         int trueSet = (this.range + 1) % 2;
