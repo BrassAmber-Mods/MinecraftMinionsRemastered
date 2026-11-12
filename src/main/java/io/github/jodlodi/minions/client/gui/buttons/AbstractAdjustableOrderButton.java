@@ -31,17 +31,17 @@ public abstract class AbstractAdjustableOrderButton extends AbstractMastersButto
 
     @Override
     public void onClick(double mouseX, double mouseY) {
-        if (this.leftAndRight && this.isMouseOverLeftMini((int)mouseX, (int)mouseY)) {
+        if (this.leftAndRight && this.isMouseOverLeftMini(mouseX, mouseY)) {
             this.onLeftPress();
             return;
         }
 
-        if (this.toggle && this.isMouseOverToggleMini((int)mouseX, (int)mouseY)) {
+        if (this.toggle && this.isMouseOverToggleMini(mouseX, mouseY)) {
             this.onTogglePress();
             return;
         }
 
-        if (this.leftAndRight && this.isMouseOverRightMini((int)mouseX, (int)mouseY)) {
+        if (this.leftAndRight && this.isMouseOverRightMini(mouseX, mouseY)) {
             this.onRightPress();
             return;
         }
@@ -63,28 +63,35 @@ public abstract class AbstractAdjustableOrderButton extends AbstractMastersButto
 
         if (this.leftAndRight) {
             boolean left = this.isMouseOverLeftMini(mouseX, mouseY);
-            this.blit(stack, this.getX() + 1, this.getY() + 11, 225, left ? 5 : 0, 5, 5);
+            this.blit(stack, this.getX() + MastersStaffScreen.MENU_SCALE, this.getY() + 11 * MastersStaffScreen.MENU_SCALE, 225, left ? 5 : 0, 5, 5);
 
             boolean right = this.isMouseOverRightMini(mouseX, mouseY);
-            this.blit(stack, this.getX() + 13, this.getY() + 11, 230, right ? 5 : 0, 5, 5);
+            this.blit(stack, this.getX() + 13 * MastersStaffScreen.MENU_SCALE, this.getY() + 11 * MastersStaffScreen.MENU_SCALE, 230, right ? 5 : 0, 5, 5);
         }
 
         if (this.toggle) {
             boolean toggle = this.isMouseOverToggleMini(mouseX, mouseY);
-            this.blit(stack, this.getX() + 7, this.getY() + 13, 235, toggle ? 5 : 0, 5, 5);
+            this.blit(stack, this.getX() + 7 * MastersStaffScreen.MENU_SCALE, this.getY() + 13 * MastersStaffScreen.MENU_SCALE, 235, toggle ? 5 : 0, 5, 5);
         }
     }
 
-    public boolean isMouseOverLeftMini(int mouseX, int mouseY) {
-        return this.leftAndRight && this.active && this.visible && this.isMouseOver(mouseX, mouseY) && mouseX <= this.getX() + 6 && mouseY >= this.getY() + 11;
+    public boolean isMouseOverLeftMini(double mouseX, double mouseY) {
+        return this.leftAndRight && this.isMouseOverMini(mouseX, mouseY, 0, 7, 11);
     }
 
-    public boolean isMouseOverToggleMini(int mouseX, int mouseY) {
-        return this.toggle && this.active && this.visible && this.isMouseOver(mouseX, mouseY) && mouseX >= this.getX() + 7 && mouseX <= this.getX() + 12 && mouseY >= this.getY() + 13;
+    public boolean isMouseOverToggleMini(double mouseX, double mouseY) {
+        return this.toggle && this.isMouseOverMini(mouseX, mouseY, 7, 13, 13);
     }
 
-    public boolean isMouseOverRightMini(int mouseX, int mouseY) {
-        return this.leftAndRight && this.active && this.visible && this.isMouseOver(mouseX, mouseY) && mouseX >= this.getX() + 13 && mouseY >= this.getY() + 11;
+    public boolean isMouseOverRightMini(double mouseX, double mouseY) {
+        return this.leftAndRight && this.isMouseOverMini(mouseX, mouseY, 13, TEXTURE_BUTTON_SIZE, 11);
+    }
+
+    private boolean isMouseOverMini(double mouseX, double mouseY, int left, int right, int top) {
+        int scale = MastersStaffScreen.MENU_SCALE;
+        return this.active && this.visible && this.isMouseOver(mouseX, mouseY)
+                && mouseX >= this.getX() + left * scale && mouseX < this.getX() + right * scale
+                && mouseY >= this.getY() + top * scale;
     }
 
     @Override

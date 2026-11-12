@@ -45,8 +45,12 @@ import javax.annotation.ParametersAreNonnullByDefault;
 public class MastersStaffScreen extends Screen {
     public static final ResourceLocation TEXTURE_LOCATION = MinionsRemastered.locate("textures/gui/minion.png");
     public static final ResourceLocation ALT_TEXTURE_LOCATION = MinionsRemastered.locate("textures/gui/alt.png");
-    public static final int BUTTON_DISTANCE = 32;
-    public static final int POINTER_DISTANCE = 8;
+    // Layout uses Minecraft's scaled GUI coordinates; keep texture pixels at an integer scale.
+    public static final int MENU_SCALE = 2;
+    public static final int BUTTON_DISTANCE = 32 * MENU_SCALE;
+    public static final int POINTER_DISTANCE = 8 * MENU_SCALE;
+    private static final int POINTER_TEXTURE_SIZE = 27;
+    private static final int CENTER_HIT_RADIUS = 10 * MENU_SCALE;
 
     private final AbstractMastersButton[] buttons = { null, null, null, null }; // [0]TOP, [1]RIGHT, [2]BOTTOM, [3]LEFT
 
@@ -180,9 +184,9 @@ public class MastersStaffScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int mouseButton) {
         boolean clicked = super.mouseClicked(mouseX, mouseY, mouseButton);
         if (!clicked) {
-            double centerX = this.width * 0.5D;
-            double centerY = this.height * 0.5D;
-            if (mouseX > centerX - 10.0D && mouseX < centerX + 10.0D && mouseY > centerY - 10.0D && mouseY < centerY + 10.0D) {
+            int centerX = this.width / 2;
+            int centerY = this.height / 2;
+            if (mouseX > centerX - CENTER_HIT_RADIUS && mouseX < centerX + CENTER_HIT_RADIUS && mouseY > centerY - CENTER_HIT_RADIUS && mouseY < centerY + CENTER_HIT_RADIUS) {
                 if (!this.isShiftKeyDown()) {
                     this.boost *= 2.0F;
                     this.boost += 3.0F;
@@ -201,6 +205,13 @@ public class MastersStaffScreen extends Screen {
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int mouseButton) {
         if (mouseButton == 1) {
+            for (AbstractMastersButton button : this.buttons) {
+                if (button != null && button.active && button.visible && button.isMouseOver(mouseX, mouseY)) {
+                    button.playDownSound(Minecraft.getInstance().getSoundManager());
+                    button.onClick(mouseX, mouseY);
+                    return true;
+                }
+            }
             this.onClose();
             return true;
         } else return super.mouseReleased(mouseX, mouseY, mouseButton);
@@ -237,17 +248,26 @@ public class MastersStaffScreen extends Screen {
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
-        if (this.buttons[0] != null) graphics.blit(TEXTURE_LOCATION, (this.width - 27) / 2, (this.height - 27) / 2 - POINTER_DISTANCE, this.buttons[0].isMouseOver(mouseX, mouseY) ? 27 : 0, 0, 27, 27);
-        if (this.buttons[1] != null) graphics.blit(TEXTURE_LOCATION, (this.width - 27) / 2 + POINTER_DISTANCE, (this.height - 27) / 2, this.buttons[1].isMouseOver(mouseX, mouseY) ? 27 : 0, 27, 27, 27);
-        if (this.buttons[2] != null) graphics.blit(TEXTURE_LOCATION, (this.width - 27) / 2, (this.height - 27) / 2 + POINTER_DISTANCE, this.buttons[2].isMouseOver(mouseX, mouseY) ? 27 : 0, 54, 27, 27);
-        if (this.buttons[3] != null) graphics.blit(TEXTURE_LOCATION, (this.width - 27) / 2 - POINTER_DISTANCE, (this.height - 27) / 2, this.buttons[3].isMouseOver(mouseX, mouseY) ? 27 : 0, 81, 27, 27);
+        this.renderPointer(graphics, mouseX, mouseY, 0, 0, -POINTER_DISTANCE);
+        this.renderPointer(graphics, mouseX, mouseY, 1, POINTER_DISTANCE, 0);
+        this.renderPointer(graphics, mouseX, mouseY, 2, 0, POINTER_DISTANCE);
+        this.renderPointer(graphics, mouseX, mouseY, 3, -POINTER_DISTANCE, 0);
 
         super.render(graphics, mouseX, mouseY, partialTick);
         if (this instanceof EntityStaffScreen entityStaffScreen) {
-            this.renderEntity(graphics, entityStaffScreen.target, this.width * 0.5D - 0.5D, this.height * 0.5D, partialTick);
+            this.renderEntity(graphics, entityStaffScreen.target, this.width / 2, this.height / 2, partialTick);
         } else if (this instanceof BlockStaffScreen blockStaffScreen) {
-            this.renderSingleBlock(graphics, this.player.level().getBlockState(blockStaffScreen.getContext().getBlockPos()), this.width * 0.5D - 0.5D, this.height * 0.5D, partialTick);
+            this.renderSingleBlock(graphics, this.player.level().getBlockState(blockStaffScreen.getContext().getBlockPos()), this.width / 2, this.height / 2, partialTick);
         }
+    }
+
+    private void renderPointer(GuiGraphics graphics, int mouseX, int mouseY, int index, int offsetX, int offsetY) {
+        AbstractMastersButton button = this.buttons[index];
+        if (button == null) return;
+        int size = POINTER_TEXTURE_SIZE * MENU_SCALE;
+        graphics.blit(TEXTURE_LOCATION, this.width / 2 - size / 2 + offsetX, this.height / 2 - size / 2 + offsetY,
+                size, size, button.isMouseOver(mouseX, mouseY) ? POINTER_TEXTURE_SIZE : 0, index * POINTER_TEXTURE_SIZE,
+                POINTER_TEXTURE_SIZE, POINTER_TEXTURE_SIZE, 256, 256);
     }
 
     @Override
@@ -263,12 +283,12 @@ public class MastersStaffScreen extends Screen {
         float spin = (this.time + partialTick) * 1.2F;
         float realTilt = (this.realTime + partialTick) * 0.15F;
         float tilt = (float)Math.sin(realTilt * 0.45F) * 4.0F;
-        float scale = 0.85F * 26.0F * ((float)(Math.cos(realTilt * 0.5F) + 1.0F) * 0.01F + 0.98F);
+        float scale = 0.85F * 26.0F * MENU_SCALE * ((float)(Math.cos(realTilt * 0.5F) + 1.0F) * 0.01F + 0.98F);
         graphics.flush();
         PoseStack pose = graphics.pose();
         pose.pushPose();
         try {
-            pose.translate(x, y + 12.0D, 150.0D);
+            pose.translate(x, y + 12.0D * MENU_SCALE, 150.0D);
             pose.scale(scale, -scale, scale);
             pose.mulPose(Axis.XP.rotationDegrees(tilt));
             pose.mulPose(Axis.YP.rotationDegrees(spin));
@@ -286,7 +306,7 @@ public class MastersStaffScreen extends Screen {
         boolean livingFlag = entity instanceof LivingEntity;
         float height = Math.max(0.01F, entity.getBbHeight());
         float width = Math.max(0.01F, entity.getBbWidth());
-        float scale = (livingFlag ? (float)Math.sqrt((Math.min(width / height, height / width) + 0.5D) * 0.5D) : 0.85F) * 26.0F;
+        float scale = (livingFlag ? (float)Math.sqrt((Math.min(width / height, height / width) + 0.5D) * 0.5D) : 0.85F) * 26.0F * MENU_SCALE;
         float spin = (this.time + partialTick) * 1.2F;
         float realTilt = (this.realTime + partialTick) * 0.15F;
         float tilt = (float)Math.sin(realTilt * 0.45F) * 4.0F;
@@ -303,7 +323,7 @@ public class MastersStaffScreen extends Screen {
         PoseStack pose = graphics.pose();
         pose.pushPose();
         try {
-            pose.translate(x, y + (livingFlag ? 1.5D * height : 0.0D) + 12.0D, 150.0D);
+            pose.translate(x, y + ((livingFlag ? 1.5D * height : 0.0D) + 12.0D) * MENU_SCALE, 150.0D);
             pose.scale(scale, scale, -scale);
             pose.mulPose(Axis.ZP.rotationDegrees(180.0F));
             pose.mulPose(Axis.XP.rotationDegrees(tilt));

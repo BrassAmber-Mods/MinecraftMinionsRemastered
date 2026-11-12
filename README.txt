@@ -17,6 +17,15 @@ Development
 
 On Windows, use gradlew.bat instead of ./gradlew.
 
+Staff controls
+  The staff menu uses larger buttons and previews and follows Minecraft's
+  GUI Scale setting. Tooltips use the normal Minecraft text size.
+  Hold right-click on a block or entity to open the staff menu.
+  Hover an action and release right-click to apply it.
+  Release over empty space to close without selecting an action.
+  Release over a small adjustment arrow or toggle to change its setting;
+  the menu stays open. Right-click and release again to adjust or apply.
+
 This branch ports the existing 1.19.2 feature set to NeoForge 1.21.1.
 It is still a beta and does not include every feature of the original
 AtomicStryker Minions mod. Gameplay, visual, multiplayer, persistence,

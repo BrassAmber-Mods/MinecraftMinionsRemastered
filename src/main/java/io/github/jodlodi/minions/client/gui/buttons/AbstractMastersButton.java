@@ -23,7 +23,8 @@ import java.util.List;
 @MethodsReturnNonnullByDefault
 public abstract class AbstractMastersButton extends Button {
     // Static
-    public static final int BUTTON_SIZE = 19;
+    public static final int TEXTURE_BUTTON_SIZE = 19;
+    public static final int BUTTON_SIZE = TEXTURE_BUTTON_SIZE * MastersStaffScreen.MENU_SCALE;
 
     // Finals
     protected final int textureX;
@@ -36,7 +37,7 @@ public abstract class AbstractMastersButton extends Button {
     protected int lastMouseY;
 
     public AbstractMastersButton(int x, int y, int textureX, int textureY, MastersStaffScreen screen) {
-        super((screen.width - BUTTON_SIZE) / 2 + x, (screen.height - BUTTON_SIZE) / 2 + y, BUTTON_SIZE, BUTTON_SIZE, CommonComponents.EMPTY, (button) -> {}, Button.DEFAULT_NARRATION);
+        super(screen.width / 2 - BUTTON_SIZE / 2 + x, screen.height / 2 - BUTTON_SIZE / 2 + y, BUTTON_SIZE, BUTTON_SIZE, CommonComponents.EMPTY, (button) -> {}, Button.DEFAULT_NARRATION);
         this.textureX = textureX;
         this.textureY = textureY;
         this.screen = screen;
@@ -72,11 +73,11 @@ public abstract class AbstractMastersButton extends Button {
     }
 
     protected void renderFrame(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        this.blit(graphics, this.textureX, this.textureY + BUTTON_SIZE);
+        this.blit(graphics, this.textureX, this.textureY + TEXTURE_BUTTON_SIZE);
     }
 
     protected void renderIcon(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        this.blit(graphics, this.textureX, this.textureY + BUTTON_SIZE + BUTTON_SIZE);
+        this.blit(graphics, this.textureX, this.textureY + TEXTURE_BUTTON_SIZE + TEXTURE_BUTTON_SIZE);
     }
 
     protected void renderExtra(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
@@ -84,7 +85,8 @@ public abstract class AbstractMastersButton extends Button {
     }
 
     public void blit(GuiGraphics graphics, int textureX, int textureY) {
-        graphics.blit(this.getShaderTexture(this.lastMouseX, this.lastMouseY), this.getX(), this.getY(), textureX, textureY, this.width, this.height);
+        graphics.blit(this.getShaderTexture(this.lastMouseX, this.lastMouseY), this.getX(), this.getY(), this.width, this.height,
+                textureX, textureY, TEXTURE_BUTTON_SIZE, TEXTURE_BUTTON_SIZE, 256, 256);
     }
 
     public void renderToolTip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -95,7 +97,9 @@ public abstract class AbstractMastersButton extends Button {
     }
 
     public void blit(GuiGraphics graphics, int x, int y, int textureX, int textureY, int width, int height) {
-        graphics.blit(this.getShaderTexture(this.lastMouseX, this.lastMouseY), x, y, textureX, textureY, width, height);
+        graphics.blit(this.getShaderTexture(this.lastMouseX, this.lastMouseY), x, y,
+                width * MastersStaffScreen.MENU_SCALE, height * MastersStaffScreen.MENU_SCALE,
+                textureX, textureY, width, height, 256, 256);
     }
 
     abstract protected MutableComponent getName();
