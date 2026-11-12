@@ -2,6 +2,7 @@ package io.github.jodlodi.minions.network;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.Minion;
+import io.github.jodlodi.minions.work.CommandValidation;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
@@ -38,7 +39,8 @@ public class SitPacket extends AbstractServerboundPacket {
 
     @Override
     void execute(ServerPlayer player, IMasterCapability capability) {
-        if (player.level() instanceof ServerLevel serverLevel && serverLevel.getEntity(this.entityID) instanceof Minion minion) {
+        if (player.level() instanceof ServerLevel serverLevel && serverLevel.getEntity(this.entityID) instanceof Minion minion
+                && CommandValidation.entity(player, minion) && CommandValidation.owned(player, capability, minion)) {
             minion.setSit(!minion.getSit());
         }
     }

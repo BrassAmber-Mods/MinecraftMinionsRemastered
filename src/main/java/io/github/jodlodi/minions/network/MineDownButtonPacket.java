@@ -1,6 +1,7 @@
 package io.github.jodlodi.minions.network;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
+import io.github.jodlodi.minions.work.CommandValidation;
 import io.github.jodlodi.minions.orders.MineDownOrder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -54,6 +55,7 @@ public class MineDownButtonPacket extends AbstractServerboundPacket {
 
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
+        if (!CommandValidation.shaft(player, this.minPos, this.maxPos, this.startDir, this.stairs)) return;
 		capability.setOrder(new MineDownOrder(this.minPos, this.maxPos, this.startDir, this.stairs));
 		capability.setPaused(this.paused);
 	}

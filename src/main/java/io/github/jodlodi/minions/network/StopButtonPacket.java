@@ -36,7 +36,6 @@ public class StopButtonPacket extends AbstractServerboundPacket {
 
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
-		//FIXME
 		if (this.shift) capability.setOrder(null);
 		else capability.setPaused(!capability.isPaused());
 	}

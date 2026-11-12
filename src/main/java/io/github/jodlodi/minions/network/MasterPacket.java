@@ -21,7 +21,7 @@ public class MasterPacket implements CustomPacketPayload {
 
     public MasterPacket(Entity entity, IMasterCapability master) {
         this.entityID = entity.getId();
-        this.tag = master.serializeNBT();
+        this.tag = master.serializeForClient();
     }
 
     public MasterPacket(FriendlyByteBuf buf) {

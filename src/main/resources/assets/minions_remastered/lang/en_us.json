@@ -45,5 +45,8 @@
   "deed.minions_remastered.teabagnuns": "Corrupt Pure Nun Thoughts",
   "deed.minions_remastered.leeroy": "Mess up the plan",
   "subtitles.minions_remastered.deed_accepted": "The gods are pleased with your sacrifice",
-  "subtitles.minions_remastered.deed_rewarded": "The gods have rewarded your offering"
+  "subtitles.minions_remastered.deed_rewarded": "The gods have rewarded your offering",
+  "message.minions_remastered.work.skipped": "Minions finished; skipped %s protected, changed, unsafe, or unreachable blocks.",
+  "message.minions_remastered.work.storage": "%s is waiting for accessible storage with room for its cargo.",
+  "message.minions_remastered.work.carry_failed": "Minions could not reach the creature. Carry order canceled."
 }

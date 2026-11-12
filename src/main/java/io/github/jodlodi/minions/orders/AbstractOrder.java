@@ -27,5 +27,9 @@ public abstract class AbstractOrder {
 
     abstract public void tick(IMasterCapability masterCapability, Player player, Level level);
 
+    public void interrupt(net.minecraft.server.level.ServerLevel level) {}
+
+    public CompoundTag serializeForClient() { return this.serialize(); }
+
     abstract public @NotNull CompoundTag serialize();
 }

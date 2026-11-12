@@ -39,14 +39,14 @@ public class EnactOrderGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (this.minion.sittingOrRiding() || this.minion.getControllingPassenger() != null) return false;
+        if (this.minion.sittingOrRiding() || this.minion.isVehicle() || this.minion.needsDelivery()) return false;
         LivingEntity living = this.minion.getOwner();
-        if (living != null) {
+        if (living != null && living.isAlive() && living.level() == this.minion.level()) {
             this.owner = living;
             Optional<IMasterCapability> oma = CommonRegistry.getMaster(living);
             if (oma.isPresent()) {
                 this.masterCapability = oma.get();
-                if (this.masterCapability.isPaused()) return false;
+                if (this.masterCapability.isPaused() || !this.masterCapability.isOrderIn(this.minion.level())) return false;
                 AbstractOrder order = this.masterCapability.getOrder();
                 if (order == null) return false;
                 this.order = order;
@@ -58,8 +58,10 @@ public class EnactOrderGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        if (this.masterCapability.isPaused()) return false;
-        if (this.minion.sittingOrRiding() || this.minion.getControllingPassenger() != null) return false;
+        if (this.owner == null || this.minion.getOwner() != this.owner || !this.owner.isAlive() || this.owner.isSpectator()
+                || this.owner.level() != this.minion.level()) return false;
+        if (this.masterCapability.isPaused() || !this.masterCapability.isOrderIn(this.minion.level())) return false;
+        if (this.minion.sittingOrRiding() || this.minion.isVehicle() || this.minion.needsDelivery()) return false;
         return this.order == this.masterCapability.getOrder() && this.order.goalCanContinueToUse(this);
     }
 
@@ -85,6 +87,9 @@ public class EnactOrderGoal extends Goal {
     public void tick() {
         this.order.goalTick(this);
     }
+
+    @Override
+    public boolean requiresUpdateEveryTick() { return true; }
 
     @Override
     public int adjustedTickDelay(int i) {

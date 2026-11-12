@@ -1,6 +1,8 @@
 package io.github.jodlodi.minions.network;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
+import io.github.jodlodi.minions.work.CommandValidation;
+import net.minecraft.world.entity.LivingEntity;
 import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.orders.CarryLivingOrder;
 import net.minecraft.network.FriendlyByteBuf;
@@ -41,8 +43,8 @@ public class CarryLivingButtonPacket extends AbstractServerboundPacket {
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
 		Entity entity = player.serverLevel().getEntity(this.id);
-		if (entity == null) return;
-		if (entity.getVehicle() instanceof Minion minion && capability.isMinion(minion.getUUID())) entity.stopRiding();
-		else if (!entity.isPassenger()) capability.setOrder(new CarryLivingOrder(this.id));
+		if (!(entity instanceof LivingEntity) || !CommandValidation.entity(player, entity) || !CommandValidation.friendly(player, entity)) return;
+		if (entity.getVehicle() instanceof Minion minion && CommandValidation.owned(player, capability, minion)) entity.stopRiding();
+		else if (!entity.isPassenger()) capability.setOrder(new CarryLivingOrder(this.id, entity.blockPosition()));
 	}
 }

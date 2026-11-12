@@ -37,7 +37,7 @@ public class MinionNavigation extends GroundPathNavigation {
     public void tick() {
         Minion minion = this.getMinion();
         if (minion.sittingOrRiding()) return;
-        if (minion.canBlink() && minion.isEnactingOrder()) {
+        if (minion.canBlink() && (minion.isEnactingOrder() || minion.isHauling())) {
             Optional.ofNullable(this.getPath()).ifPresent(path -> {
                 if (this.shouldBlink(path)) {
                     Optional.ofNullable(MinUtil.randomOpenNearbyOrAboveOrBelow(path.getTarget(), level)).ifPresent(pos -> {

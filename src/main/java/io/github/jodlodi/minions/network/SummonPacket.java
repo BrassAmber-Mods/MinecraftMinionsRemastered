@@ -2,6 +2,8 @@ package io.github.jodlodi.minions.network;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.Minion;
+import io.github.jodlodi.minions.work.CommandValidation;
+import net.minecraft.core.Direction;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -45,23 +47,26 @@ public class SummonPacket extends AbstractServerboundPacket {
 		buf.writeInt(this.specificID);
 	}
 
-	@Override
-	void execute(ServerPlayer player, IMasterCapability capability) {
-		if (capability.minionCount() >= 4) return; //Just in case
-		BlockPos bPos = this.pos;
-		if (!player.level().getBlockState(bPos).canBeReplaced()) bPos = bPos.above();
-		if (player.level().getBlockState(bPos).canBeReplaced()) {
-			Minion minion = new Minion(player.level());
-			minion.setOwnerUUID(player.getUUID());
-			Vec3 pos = Vec3.atLowerCornerOf(bPos).add(player.level().random.nextDouble(), 0.0D, player.level().random.nextDouble());
-			minion.moveTo(pos.x, pos.y, pos.z, player.getYRot(), 0.0F);
-			minion.blink(pos);
-
-			if (this.specificID == -1) capability.addMinion(minion.getUUID());
-			else capability.addSpecificMinion(minion.getUUID(), this.specificID);
-
-			player.level().addFreshEntity(minion);
-			capability.finalizeMinion(minion);
-		}
-	}
+    @Override
+    void execute(ServerPlayer player, IMasterCapability master) {
+        if (!CommandValidation.block(player, this.pos) || master.minionCount() >= 4 || this.specificID < -1 || this.specificID >= 4) return;
+        int slot = this.specificID >= 0 ? this.specificID : master.getMinions().indexOf(null);
+        if (slot < 0 || master.getMinions().get(slot) != null) return;
+        BlockPos base = player.level().getBlockState(this.pos).canBeReplaced() ? this.pos : this.pos.above();
+        Minion minion = new Minion(player.level());
+        minion.setOwnerUUID(player.getUUID());
+        BlockPos destination = null;
+        for (BlockPos candidate : java.util.List.of(base, base.north(), base.south(), base.east(), base.west())) {
+            if (!player.level().isInWorldBounds(candidate) || !player.level().hasChunkAt(candidate) || !player.level().getWorldBorder().isWithinBounds(candidate)
+                    || !player.level().getBlockState(candidate).getFluidState().isEmpty() || !player.level().mayInteract(player, candidate)) continue;
+            Vec3 center = Vec3.atBottomCenterOf(candidate);
+            minion.moveTo(center.x, center.y, center.z, player.getYRot(), 0);
+            if (player.level().noCollision(minion, minion.getBoundingBox())) { destination = candidate; break; }
+        }
+        if (destination == null) return;
+        master.addSpecificMinion(minion.getUUID(), slot);
+        master.finalizeMinion(minion);
+        if (!player.level().addFreshEntity(minion)) { master.removeMinion(minion.getUUID()); return; }
+        minion.blink(destination);
+    }
 }

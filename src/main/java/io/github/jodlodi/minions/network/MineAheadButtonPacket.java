@@ -1,6 +1,7 @@
 package io.github.jodlodi.minions.network;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
+import io.github.jodlodi.minions.work.CommandValidation;
 import io.github.jodlodi.minions.orders.MineAheadOrder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -55,6 +56,7 @@ public class MineAheadButtonPacket extends AbstractServerboundPacket {
 
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
+        if (!CommandValidation.tunnel(player, this.minPos, this.maxPos, this.direction, this.depth)) return;
 		capability.setOrder(new MineAheadOrder(this.minPos, this.maxPos, Direction.values()[this.direction], this.depth));
 		capability.setPaused(this.paused);
 	}

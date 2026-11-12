@@ -1,6 +1,10 @@
 package io.github.jodlodi.minions.minion;
 
 import io.github.jodlodi.minions.MinUtil;
+import io.github.jodlodi.minions.work.WorkerPlayer;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.items.ItemStackHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.goals.*;
 import io.github.jodlodi.minions.network.BlinkPacket;
@@ -65,6 +69,19 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     public static final float DEFAULT_WIDTH = 0.6F;
     public static final float DEFAULT_HEIGHT = 0.95F;
 
+    private boolean restoringCargo;
+    private boolean deliveryRequested;
+    private boolean hauling;
+    private WorkerPlayer workerPlayer;
+    private final ItemStackHandler cargo = new ItemStackHandler(27) {
+        @Override
+        protected void onContentsChanged(int slot) {
+            if (!Minion.this.restoringCargo && !Minion.this.level().isClientSide) {
+                Minion.this.getMastersCapability().ifPresent(Minion.this::saveWorkerState);
+            }
+        }
+    };
+
     public Minion(Level level) {
         super(CommonRegistry.MINION.get(), level);
         this.setCanPickUpLoot(true);
@@ -81,13 +98,14 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     @Override
     protected void registerGoals() {
-        this.goalSelector.addGoal(0, new EnactOrderGoal(this, 1.0D));
-        this.goalSelector.addGoal(1, new CustomFloatGoal(this));
-        this.goalSelector.addGoal(2, new FollowMasterGoal(this, 1.2D, 9.0F, 2.0F, false));
-        this.goalSelector.addGoal(3, new LookAtMasterGoal(this));
-        this.goalSelector.addGoal(4, new MinionRandomStrollGoal(this, 1.0D));
-        this.goalSelector.addGoal(5, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(6, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(0, new CustomFloatGoal(this));
+        this.goalSelector.addGoal(1, new HaulItemsGoal(this));
+        this.goalSelector.addGoal(2, new EnactOrderGoal(this, 1.0D));
+        this.goalSelector.addGoal(3, new FollowMasterGoal(this, 1.2D, 9.0F, 2.0F, false));
+        this.goalSelector.addGoal(4, new LookAtMasterGoal(this));
+        this.goalSelector.addGoal(5, new MinionRandomStrollGoal(this, 1.0D));
+        this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 6.0F));
+        this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
     }
 
     @Override
@@ -115,7 +133,10 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
             LivingEntity owner = this.getOwner();
             if (owner != null) {
-                CommonRegistry.getMaster(owner).ifPresent(this::accept);
+                CommonRegistry.getMaster(owner).ifPresent(master -> {
+                    this.accept(master);
+                    if (!this.isRemoved() && this.tickCount % 20 == 0) this.saveWorkerState(master);
+                });
             }
         }
 
@@ -124,6 +145,14 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     @Override
     public void remove(RemovalReason removalReason) {
+        if (!this.level().isClientSide && removalReason == RemovalReason.KILLED) {
+            this.getMastersCapability().ifPresent(master -> {
+                if (master.isMinion(this.getUUID())) {
+                    this.saveWorkerState(master);
+                    master.removeMinion(this.getUUID());
+                }
+            });
+        }
         if (!this.level().isClientSide) PacketDistributor.sendToPlayersTrackingEntityAndSelf(this, new PoofPacket(this.getId()));
         super.remove(removalReason);
     }
@@ -142,101 +171,129 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     @Override
     public void setCustomName(@Nullable Component component) {
-        this.getMastersCapability().ifPresent(masterCapability -> {
-            CompoundTag tag = masterCapability.getInventory(this.getMinionID(masterCapability));
-            tag.putString("CustomName", Component.Serializer.toJson(component, this.registryAccess()));
-        });
         super.setCustomName(component);
+        if (!this.level().isClientSide) this.getMastersCapability().ifPresent(this::saveWorkerState);
     }
 
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack item = player.getItemInHand(hand);
-        if (item.getItem() instanceof DyeItem dyeItem) {
-            IMasterCapability cap = this.getMastersCapability().orElse(null);
-            if (cap != null && player == this.getOwner()) {
-                CompoundTag tag = cap.getInventory(this.getMinionID(cap));
-                int newColor = MinUtil.dye(dyeItem, MinUtil.getColor(tag));
-                tag.putInt("Color", newColor);
-                this.entityData.set(DATA_COLOR, newColor);
+        if (item.getItem() instanceof DyeItem dye && player.getUUID().equals(this.getOwnerUUID())) {
+            if (!this.level().isClientSide) {
+                this.setColor(MinUtil.dye(dye, this.getColor()));
+                this.getMastersCapability().ifPresent(this::saveWorkerState);
+                if (!player.getAbilities().instabuild) item.shrink(1);
             }
-            if (!player.getAbilities().instabuild) item.shrink(1);
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
-
         return super.mobInteract(player, hand);
     }
 
     @Override
     public InteractionResult checkAndHandleImportantInteractions(Player player, InteractionHand hand) {
-        if (player != this.getOwner()) return InteractionResult.PASS;
+        if (!player.getUUID().equals(this.getOwnerUUID())) return InteractionResult.PASS;
         return super.checkAndHandleImportantInteractions(player, hand);
     }
 
     @Override
     protected void pickUpItem(ItemEntity item) {
-        this.getMastersCapability().ifPresent(master -> {
-            BlockPos storage = master.getContainerBlock();
-            if (storage != null) {
-                IItemHandler handler = this.level().getCapability(Capabilities.ItemHandler.BLOCK, storage, null);
-                if (handler != null) {
-                    this.storeItem(handler, item);
-                    return;
-                }
-                master.setContainerBlock(null);
-            }
-            if (this.level() instanceof ServerLevel serverLevel) {
-                Entity target = serverLevel.getEntity(master.getContainerEntity());
-                if (target == null || target instanceof LivingEntity living && living.isDeadOrDying()) {
-                    master.setContainerEntity(null);
-                    target = serverLevel.getEntity(master.getContainerEntity());
-                }
-                if (target != null) {
-                    IItemHandler handler = target.getCapability(Capabilities.ItemHandler.ENTITY);
-                    if (handler != null) this.storeItem(handler, item);
-                    if (target instanceof LivingEntity living) living.onItemPickup(item);
-                }
-            }
-        });
+        if (this.getMastersCapability().isEmpty() || item.hasPickUpDelay()
+                || item.getTarget() != null && !item.getTarget().equals(this.getOwnerUUID())) return;
+        ItemStack original = item.getItem();
+        ItemStack remainder = this.insertCargo(original.copy());
+        int pickedUp = original.getCount() - remainder.getCount();
+        if (pickedUp > 0) {
+            this.onItemPickup(item);
+            this.take(item, pickedUp);
+            if (remainder.isEmpty()) item.discard();
+            else item.setItem(remainder);
+        }
     }
 
     @Override
-    public boolean canHoldItem(ItemStack stack) {
-        return stack.getItem().canFitInsideContainerItems();
+    public boolean canHoldItem(ItemStack stack) { return stack.getItem().canFitInsideContainerItems(); }
+
+    public ItemStack insertCargo(ItemStack stack) {
+        if (!this.canHoldItem(stack)) return stack;
+        ItemStack remainder = ItemHandlerHelper.insertItemStacked(this.cargo, stack, false);
+        if (!remainder.isEmpty() || this.isCargoFull()) this.requestDelivery();
+        return remainder;
     }
 
-    protected void storeItem(IItemHandler outputIItemHandler, ItemEntity item) {
-        ItemStack inputStack = item.getItem();
+    public boolean hasCargo() {
+        for (int i = 0; i < this.cargo.getSlots(); i++) if (!this.cargo.getStackInSlot(i).isEmpty()) return true;
+        return false;
+    }
 
-        if (!inputStack.isEmpty()) {
-            int firstProperStack = -1;
-            for (int j = 0; j < outputIItemHandler.getSlots(); j++) {
-                if (outputIItemHandler.isItemValid(j, inputStack)) {
-                    ItemStack outputStack = outputIItemHandler.getStackInSlot(j);
+    private boolean isCargoFull() {
+        for (int i = 0; i < this.cargo.getSlots(); i++) if (this.cargo.getStackInSlot(i).isEmpty()) return false;
+        return true;
+    }
 
-                    if (firstProperStack == -1 && outputStack.isEmpty()) {
-                        firstProperStack = j; //We reference the index of the first empty slot, in case there is no stacks that aren't at max size
-                    } else if (ItemStack.isSameItemSameComponents(inputStack, outputStack)
-                            && outputStack.getCount() < outputStack.getMaxStackSize()
-                            && outputStack.getCount() < outputIItemHandler.getSlotLimit(j)) {
-                        firstProperStack = j;
-                        break;
-                    }
-                }
-            }
+    public boolean needsDelivery() { return this.hasCargo() && (this.deliveryRequested || this.isCargoFull()); }
+    public void requestDelivery() {
+        if (this.hasCargo()) { this.deliveryRequested = true; this.getMastersCapability().ifPresent(this::saveWorkerState); }
+    }
+    public boolean isHauling() { return this.hauling; }
+    public void setHauling(boolean hauling) { this.hauling = hauling; }
 
-            if (firstProperStack != -1) { //If there weren't any non-full stacks, we transfer to an empty space instead
-                ItemStack sim = outputIItemHandler.insertItem(firstProperStack, inputStack, true);
-                if (sim.getCount() < inputStack.getCount()) {
-                    outputIItemHandler.insertItem(firstProperStack, inputStack, false);
-                    if (sim.isEmpty()) {
-                        this.take(item, inputStack.getCount());
-                        item.discard();
-                    } else item.setItem(sim);
-                }
-            }
-
+    public int unloadCargo(IItemHandler destination) {
+        int moved = 0;
+        for (int i = 0; i < this.cargo.getSlots(); i++) {
+            ItemStack stack = this.cargo.getStackInSlot(i);
+            if (stack.isEmpty()) continue;
+            ItemStack remaining = ItemHandlerHelper.insertItemStacked(destination, stack.copy(), false);
+            moved += stack.getCount() - remaining.getCount();
+            this.cargo.setStackInSlot(i, remaining);
         }
+        if (!this.hasCargo()) this.deliveryRequested = false;
+        this.getMastersCapability().ifPresent(this::saveWorkerState);
+        return moved;
+    }
+
+    public WorkerPlayer workerPlayer() {
+        ServerPlayer owner = (ServerPlayer)this.getOwner();
+        if (this.workerPlayer == null || this.workerPlayer.level() != this.level() || !this.workerPlayer.getUUID().equals(owner.getUUID())) {
+            this.workerPlayer = new WorkerPlayer((ServerLevel)this.level(), owner, this);
+        }
+        return this.workerPlayer;
+    }
+
+    public void saveWorkerState(IMasterCapability master) {
+        if (this.restoringCargo || !master.isMinion(this.getUUID())) return;
+        CompoundTag tag = this.workerState();
+        master.setInventory(this.getMinionID(master), tag);
+    }
+
+    private CompoundTag workerState() {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("Color", this.getColor());
+        tag.putBoolean("Sit", this.getSit());
+        if (this.hasCustomName()) tag.putString("CustomName", Component.Serializer.toJson(this.getCustomName(), this.registryAccess()));
+        if (this.hasCargo()) tag.put("Cargo", this.cargo.serializeNBT(this.registryAccess()));
+        tag.putBoolean("DeliveryRequested", this.deliveryRequested);
+        tag.putString("WorkerDimension", this.level().dimension().location().toString());
+        tag.putLong("WorkerPosition", this.blockPosition().asLong());
+        return tag;
+    }
+
+    public void restoreWorkerState(CompoundTag tag) {
+        this.restoringCargo = true;
+        try {
+            this.setColor(MinUtil.getColor(tag));
+            this.setSit(tag.getBoolean("Sit"));
+            for (int i = 0; i < this.cargo.getSlots(); i++) this.cargo.setStackInSlot(i, ItemStack.EMPTY);
+            if (tag.contains("Cargo")) {
+                CompoundTag items = tag.getCompound("Cargo").copy();
+                items.putInt("Size", 27);
+                this.cargo.deserializeNBT(this.registryAccess(), items);
+            }
+            if (tag.contains("CustomName")) {
+                try { this.setCustomName(Component.Serializer.fromJson(tag.getString("CustomName"), this.registryAccess())); }
+                catch (RuntimeException exception) { io.github.jodlodi.minions.MinionsRemastered.LOGGER.warn("Invalid saved minion name", exception); }
+            }
+            this.deliveryRequested = tag.getBoolean("DeliveryRequested");
+        } finally { this.restoringCargo = false; }
     }
 
     @Override
@@ -267,6 +324,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     public void setSit(boolean sit) {
         this.entityData.set(DATA_SITTING, sit);
+        if (!this.level().isClientSide && this.cargo != null) this.getMastersCapability().ifPresent(this::saveWorkerState);
     }
 
     public boolean getSit() {
@@ -380,7 +438,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     public LivingEntity getOwner() {
         try {
             UUID uuid = this.getOwnerUUID();
-            return uuid == null ? null : this.level().getPlayerByUUID(uuid);
+            return uuid == null ? null : this.level() instanceof ServerLevel server ? server.getServer().getPlayerList().getPlayer(uuid) : this.level().getPlayerByUUID(uuid);
         } catch (IllegalArgumentException illegalargumentexception) {
             return null;
         }
@@ -396,26 +454,19 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         if (this.getOwnerUUID() != null) tag.putUUID("Owner", this.getOwnerUUID());
-        tag.putInt("Color", this.getColor());
-        tag.putBoolean("Sit", this.getSit());
+        tag.merge(this.workerState());
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-        UUID uuid = null;
-        if (tag.hasUUID("Owner")) uuid = tag.getUUID("Owner");
-        else if (this.getServer() != null) uuid = OldUsersConverter.convertMobOwnerIfNecessary(this.getServer(), tag.getString("Owner"));
-
-        if (uuid != null) this.setOwnerUUID(uuid);
-
-        this.setColor(MinUtil.getColor(tag));
-        this.getMastersCapability().ifPresent(masterCapability -> {
-            CompoundTag inventory = masterCapability.getInventory(this.getMinionID(masterCapability));
-            this.setColor(MinUtil.getColor(inventory));
-        });
-
-        this.setSit(tag.contains("Sit") && tag.getBoolean("Sit"));
+        this.restoringCargo = true;
+        try {
+            super.readAdditionalSaveData(tag);
+            UUID owner = tag.hasUUID("Owner") ? tag.getUUID("Owner") : this.getServer() != null
+                    ? OldUsersConverter.convertMobOwnerIfNecessary(this.getServer(), tag.getString("Owner")) : null;
+            this.setOwnerUUID(owner);
+            this.restoreWorkerState(tag);
+        } finally { this.restoringCargo = false; }
     }
 
     private void accept(@NotNull IMasterCapability iMasterCapability) {

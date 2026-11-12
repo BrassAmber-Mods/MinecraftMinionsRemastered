@@ -1,6 +1,8 @@
 package io.github.jodlodi.minions.network;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
+import io.github.jodlodi.minions.work.CommandValidation;
+import io.github.jodlodi.minions.work.WorkerActions;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
@@ -37,6 +39,8 @@ public class ContainerEntityPacket extends AbstractServerboundPacket {
 
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
+        var target = player.serverLevel().getEntity(this.uuid);
+        if (!CommandValidation.entity(player, target) || WorkerActions.container(player, target) == null) return;
 		capability.setContainerEntity(this.uuid);
 		capability.setContainerBlock(null);
 	}

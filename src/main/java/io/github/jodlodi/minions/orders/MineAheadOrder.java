@@ -1,192 +1,118 @@
 package io.github.jodlodi.minions.orders;
 
 import io.github.jodlodi.minions.MinUtil;
+import io.github.jodlodi.minions.MinionsConfig;
 import io.github.jodlodi.minions.MinionsRemastered;
-import io.github.jodlodi.minions.capabilities.IMasterCapability;
-import io.github.jodlodi.minions.minion.Minion;
-import io.github.jodlodi.minions.minion.goals.EnactOrderGoal;
-import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.navigation.PathNavigation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.world.level.block.Blocks;
 
-import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.HashMap;
-import java.util.Map;
-
-@ParametersAreNonnullByDefault
-public class MineAheadOrder extends AbstractOrder {
-    // Static
+public class MineAheadOrder extends AbstractWorkOrder {
     public static final ResourceLocation ID = MinionsRemastered.locate("mine_ahead_order");
-
-    // Stored variables
     private final BlockPos minPos;
     private final BlockPos maxPos;
     private final Direction direction;
     private final int depth;
-
-    // Temp variables
-    private final Map<Integer, BlockPos> mineMap = new HashMap<>();
-    private final Map<Integer, Float> breakMap = new HashMap<>();
     private int current;
+    private int cursor;
 
     public MineAheadOrder(BlockPos minPos, BlockPos maxPos, Direction direction, int depth) {
-        this.minPos = minPos;
-        this.maxPos = maxPos;
-        this.current = 0;
+        this.minPos = minPos.immutable();
+        this.maxPos = maxPos.immutable();
         this.direction = direction;
         this.depth = depth;
+        this.validate();
     }
 
     public MineAheadOrder(CompoundTag tag) {
+        super(tag);
         this.minPos = BlockPos.of(tag.getLong("min"));
         this.maxPos = BlockPos.of(tag.getLong("max"));
-        this.current = tag.getInt("current");
-        this.direction = Direction.values()[tag.getInt("direction")];
+        this.direction = Direction.from3DDataValue(tag.getInt("direction"));
         this.depth = tag.getInt("depth");
+        this.current = Math.max(0, tag.getInt("current"));
+        this.cursor = Math.max(0, tag.getInt("cursor"));
+        this.validate();
+    }
+
+    private void validate() {
+        int width = this.direction.getAxis() == Direction.Axis.X ? this.maxPos.getZ() - this.minPos.getZ() + 1 : this.maxPos.getX() - this.minPos.getX() + 1;
+        int height = this.maxPos.getY() - this.minPos.getY() + 1;
+        if (!this.direction.getAxis().isHorizontal() || this.depth < 1 || this.depth > 4096
+                || this.minPos.get(this.direction.getAxis()) != this.maxPos.get(this.direction.getAxis())
+                || !((width == 1 && height == 2) || (width == 3 && height == 3) || (width == 5 && height == 5))) throw new IllegalArgumentException("Invalid tunnel bounds");
     }
 
     @Override
-    public @NotNull CompoundTag serialize() {
-        return Util.make(new CompoundTag(), compoundTag -> {
-            compoundTag.putLong("min", this.minPos.asLong());
-            compoundTag.putLong("max", this.maxPos.asLong());
-            compoundTag.putInt("current", this.current);
-            compoundTag.putInt("direction", this.direction.ordinal());
-            compoundTag.putInt("depth", this.depth);
-        });
+    public ResourceLocation getID() { return ID; }
+    @Override
+    protected boolean followsVeins() { return true; }
+
+    @Override
+    public CompoundTag serialize() {
+        CompoundTag tag = new CompoundTag();
+        tag.putLong("min", this.minPos.asLong());
+        tag.putLong("max", this.maxPos.asLong());
+        tag.putInt("current", this.current);
+        tag.putInt("direction", this.direction.ordinal());
+        tag.putInt("depth", this.depth);
+        tag.putInt("cursor", this.cursor);
+        return this.saveWork(tag);
     }
 
     @Override
-    public ResourceLocation getID() {
-        return ID;
-    }
-
-    @Override
-    public boolean goalCanUse(EnactOrderGoal goal) {
-        return true;
-    }
-
-    @Override
-    public boolean goalCanContinueToUse(EnactOrderGoal goal) {
-        return true;
-    }
-
-    @Override
-    public void goalStart(EnactOrderGoal goal) {
-
-    }
-
-    @Override
-    public void goalStop(EnactOrderGoal goal) {
-        goal.getMinion().setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-        Minion minion = goal.getMinion();
-        int id = goal.getMasterCapability().getMinions().indexOf(minion.getUUID());
-        this.mineMap.remove(id);
-    }
-
-    @Override
-    public void goalTick(EnactOrderGoal goal) {
-        Minion minion = goal.getMinion();
-        int id = goal.getMasterCapability().getMinions().indexOf(minion.getUUID());
-        Level level = minion.level();
-        PathNavigation navigation = goal.getNavigation();
-        LivingEntity owner = goal.getOwner();
-
-        if (!this.mineMap.containsKey(id)) {
-            BlockPos one = this.minPos.relative(this.direction, this.current);
-            BlockPos two = this.maxPos.relative(this.direction, this.current);
-
-            BlockPos closest = null;
-            for (BlockPos pos : BlockPos.betweenClosed(one, two)) {
-                if (MinUtil.isBlockBreakable(level.getBlockState(pos), level, pos, owner) && (closest == null || minion.distanceToSqr(Vec3.atCenterOf(pos)) < minion.distanceToSqr(Vec3.atCenterOf(closest)))) {
-                    closest = new BlockPos(pos.getX(), pos.getY(), pos.getZ());
-                }
-            }
-
-            if (closest == null) return;
-            minion.setItemInHand(InteractionHand.MAIN_HAND, MinUtil.bestToolForBlock(level.getBlockState(closest)));
-
-            this.mineMap.put(id, closest);
-            this.breakMap.put(id, 0.0F);
-        }
-        BlockPos pos = this.mineMap.get(id);
-
-        if (pos.get(this.direction.getAxis()) != this.minPos.relative(this.direction, this.current).get(this.direction.getAxis())) {
-            this.mineMap.remove(id);
-            return;
-        }
-
-        BlockState state = level.getBlockState(pos);
-        if (minion.tickCount % 5 == 0 && !MinUtil.isBlockBreakable(state, level, pos, owner)) {
-            this.mineMap.remove(id);
-            this.breakMap.put(id, 0.0F);
-            return;
-        }
-
-        minion.getLookControl().setLookAt(Vec3.atCenterOf(pos));
-
-        BlockPos destiny = pos.relative(this.direction, -1);
-        Vec3 centerDestiny = Vec3.atBottomCenterOf(destiny);
-
-        if (MinUtil.airDistanceSqr(centerDestiny, minion.position()) > 4.0D) {
-            this.breakMap.put(id, 0.0F);
-            navigation.moveTo(centerDestiny.x, centerDestiny.y, centerDestiny.z, goal.getSpeedModifier());
-        } else if (!minion.getBlinking()) {
-            minion.swing(InteractionHand.MAIN_HAND);
-            navigation.stop();
-
-            float breakProgress = this.breakMap.get(id) + (minion.getMineSpeed() / state.getDestroySpeed(level, pos) / 30.0F);
-
-            if (breakProgress >= 1.0F) {
-                this.mineMap.remove(id);
-                this.breakMap.put(id, 0.0F);
-                level.destroyBlock(pos, true, owner);
-                MinUtil.blockLiquids(pos, level);
-            } else {
-                level.destroyBlockProgress(minion.getId(), pos, (int)(breakProgress * 10.0F));
-                this.breakMap.put(id, breakProgress);
-
-                for (int i = 0; i < 4; i++) {
-                    if (i != id && this.mineMap.get(i) != null && this.mineMap.get(id) != null &&this.mineMap.get(i).equals(this.mineMap.get(id))) {
-                        this.breakMap.put(i, breakProgress);
-                    }
-                }
-            }
-        }
-    }
-
-    @Override
-    public void tick(IMasterCapability masterCapability, Player player, Level level) {
-        if (!level.isClientSide) {
-            for (int i = 0; i < 4; i++) {
-                if (this.mineMap.get(i) != null && masterCapability.getMinions().get(i) != null) return; // Return in a non-null minion still has a block to break
-            }
-
-            BlockPos one = this.minPos.relative(this.direction, this.current);
-            BlockPos two = this.maxPos.relative(this.direction, this.current);
-
-            for (BlockPos pos : BlockPos.betweenClosed(one, two)) {
-                if (MinUtil.isBlockBreakable(level.getBlockState(pos), level, pos, player)) return; // Return if a block that could still be broken is found
-            }
-
-            this.current += 1;
-            if (this.current >= this.depth || !level.isInWorldBounds(one.relative(this.direction))) masterCapability.setOrder(null);
+    protected boolean scanNext(ServerPlayer owner, ServerLevel level) {
+        BlockPos min = this.minPos.relative(this.direction, this.current);
+        BlockPos max = this.maxPos.relative(this.direction, this.current);
+        if (this.current >= this.depth || !level.isInWorldBounds(min) || !level.getWorldBorder().isWithinBounds(min)
+                || !level.getWorldBorder().isWithinBounds(max)) { this.finishSource(); return true; }
+        int width = this.direction.getAxis() == Direction.Axis.X ? max.getZ() - min.getZ() + 1 : max.getX() - min.getX() + 1;
+        int height = max.getY() - min.getY() + 1;
+        int blocks = width * height;
+        if (this.cursor < blocks) {
+            int horizontal = this.cursor % width;
+            BlockPos pos = this.direction.getAxis() == Direction.Axis.X
+                    ? new BlockPos(min.getX(), min.getY() + this.cursor / width, min.getZ() + horizontal)
+                    : new BlockPos(min.getX() + horizontal, min.getY() + this.cursor / width, min.getZ());
+            if (!this.scanBlock(owner, level, pos, null)) return false;
+        } else if (this.cursor < blocks + width) {
+            if (this.cursor == blocks && !this.drained()) return false;
+            int horizontal = this.cursor - blocks;
+            BlockPos floor = this.direction.getAxis() == Direction.Axis.X ? new BlockPos(min.getX(), min.getY() - 1, min.getZ() + horizontal)
+                    : new BlockPos(min.getX() + horizontal, min.getY() - 1, min.getZ());
+            if (!this.loaded(owner, level, floor)) return false;
+            if (MinionsConfig.REPAIR_TUNNELS.get() && level.getBlockState(floor).canBeReplaced()
+                    && !this.scanBlock(owner, level, floor, Blocks.BLACKSTONE.defaultBlockState())) return false;
+        } else if (this.cursor == blocks + width) {
+            if (!this.drained()) return false;
+            BlockPos torch = this.direction.getAxis() == Direction.Axis.X ? new BlockPos(min.getX(), min.getY(), min.getZ() + width / 2)
+                    : new BlockPos(min.getX() + width / 2, min.getY(), min.getZ());
+            if (MinionsConfig.PLACE_TORCHES.get() && this.current % 7 == 0 && this.loaded(owner, level, torch)
+                    && level.getBlockState(torch).isAir() && level.getMaxLocalRawBrightness(torch) < 8
+                    && !this.scanBlock(owner, level, torch, Blocks.TORCH.defaultBlockState())) return false;
         } else {
-            boolean axis = this.direction.getAxis() == Direction.Axis.Z;
-            int mul = (axis ? this.direction.getStepZ() : this.direction.getStepX()) == -1 ? 1 : 0;
-            MinUtil.particleAtWall(player.getRandom(), (axis ? this.minPos.getZ() : this.minPos.getX()) + mul, level, axis, axis ? this.minPos.getX() : this.minPos.getZ(), (axis ? this.maxPos.getX() : this.maxPos.getZ()) + 1, this.minPos.getY(), this.maxPos.getY() + 1);
+            if (!this.drained()) return false;
+            this.current++;
+            this.cursor = 0;
+            this.nextStage();
+            return true;
         }
+        this.cursor++;
+        return true;
     }
 
+    @Override
+    protected void preview(Player player, Level level) {
+        if (player.tickCount % 4 != 0) return;
+        boolean axis = this.direction.getAxis() == Direction.Axis.Z;
+        int mul = (axis ? this.direction.getStepZ() : this.direction.getStepX()) == -1 ? 1 : 0;
+        MinUtil.particleAtWall(player.getRandom(), (axis ? this.minPos.getZ() : this.minPos.getX()) + mul, level, axis,
+                axis ? this.minPos.getX() : this.minPos.getZ(), (axis ? this.maxPos.getX() : this.maxPos.getZ()) + 1, this.minPos.getY(), this.maxPos.getY() + 1);
+    }
 }

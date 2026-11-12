@@ -8,6 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.common.util.INBTSerializable;
 import org.jetbrains.annotations.NotNull;
 
@@ -74,6 +75,15 @@ public interface IMasterCapability extends INBTSerializable<CompoundTag> {
     UUID getContainerEntity();
 
     void finalizeMinion(Minion minion);
+
+    ResourceLocation getContainerDimension();
+
+    @Nullable
+    BlockPos getContainerEntityPosition();
+
+    boolean isOrderIn(Level level);
+
+    CompoundTag serializeForClient();
 
     void setPaused(boolean paused);
 

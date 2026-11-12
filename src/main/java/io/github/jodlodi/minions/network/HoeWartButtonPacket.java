@@ -1,6 +1,7 @@
 package io.github.jodlodi.minions.network;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
+import io.github.jodlodi.minions.work.CommandValidation;
 import io.github.jodlodi.minions.orders.HoeWartOrder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -57,6 +58,7 @@ public class HoeWartButtonPacket extends AbstractServerboundPacket {
 
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
+        if (!CommandValidation.harvest(player, this.minPos, this.maxPos, this.predicate, net.minecraft.tags.BlockTags.WART_BLOCKS)) return;
 		capability.setOrder(new HoeWartOrder(this.minPos, this.maxPos, this.predicate));
 		capability.setPaused(this.paused);
 	}

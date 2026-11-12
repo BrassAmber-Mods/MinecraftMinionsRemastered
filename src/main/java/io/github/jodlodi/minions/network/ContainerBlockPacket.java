@@ -1,6 +1,7 @@
 package io.github.jodlodi.minions.network;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
+import io.github.jodlodi.minions.work.WorkerActions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -37,6 +38,7 @@ public class ContainerBlockPacket extends AbstractServerboundPacket {
 
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
+        if (WorkerActions.container(player, this.pos) == null) return;
 		capability.setContainerBlock(this.pos);
 		capability.setContainerEntity(null);
 	}

@@ -66,15 +66,16 @@ public class MinUtil {
     @Nullable
     public static BlockPos randomOpenNearby(BlockPos center, LevelAccessor level) {
         List<BlockPos> possiblePositions = new ArrayList<>();
-        for (Direction direction : Direction.values()) {
-            if (direction.getAxis() != Direction.Axis.Y) {
-                BlockPos testPos = center.relative(direction);
-                if (!level.getBlockState(testPos).blocksMotion()) {
-                    BlockPos below = testPos.below();
-                    if (level.getBlockState(below).isSolidRender(level, below)) {
-                        possiblePositions.add(testPos);
-                    }
-                }
+        List<BlockPos> candidates = new ArrayList<>();
+        candidates.add(center);
+        for (Direction direction : Direction.Plane.HORIZONTAL) candidates.add(center.relative(direction));
+        for (BlockPos testPos : candidates) {
+            if (level.hasChunkAt(testPos) && level.hasChunkAt(testPos.above()) && level.hasChunkAt(testPos.below())
+                    && level.getBlockState(testPos).getFluidState().isEmpty() && level.getBlockState(testPos.above()).getFluidState().isEmpty()
+                    && !level.getBlockState(testPos).blocksMotion() && !level.getBlockState(testPos.above()).blocksMotion()
+                    && level.getWorldBorder().isWithinBounds(testPos)) {
+                BlockPos below = testPos.below();
+                if (level.getBlockState(below).isSolidRender(level, below)) possiblePositions.add(testPos);
             }
         }
 
@@ -129,7 +130,14 @@ public class MinUtil {
     }
 
     public static void particlesAroundTag(RandomSource random, Level level, BlockPos min, BlockPos max, Predicate<BlockState> predicate) {
-        for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
+        int width = max.getX() - min.getX() + 1;
+        int height = max.getY() - min.getY() + 1;
+        int depth = max.getZ() - min.getZ() + 1;
+        if (width < 1 || height < 1 || depth < 1) return;
+        int samples = (int)Math.min(64L, (long)width * height * depth);
+        for (int sample = 0; sample < samples; sample++) {
+            BlockPos pos = min.offset(random.nextInt(width), random.nextInt(height), random.nextInt(depth));
+            if (!level.hasChunkAt(pos)) continue;
             if (random.nextInt(10) == 0 && predicate.test(level.getBlockState(pos))) {
                 for (Direction dir : Direction.values()) {
                     if (level.getBlockState(pos.relative(dir)).canBeReplaced()) {
@@ -157,7 +165,7 @@ public class MinUtil {
     //TODO
 
     public static ItemStack bestToolForBlock(BlockState state) {
-        return Stream.of(PICKAXE, AXE, SHOVEL, HOE, SWORD).max(Comparator.comparingDouble(e -> e.getItem().getDestroySpeed(e, state))).orElse(PICKAXE);
+        return Stream.of(PICKAXE, AXE, SHOVEL, HOE, SWORD).max(Comparator.comparingDouble(e -> e.getItem().getDestroySpeed(e, state))).orElse(PICKAXE).copy();
     }
 
     public static int getColor(CompoundTag tag) {

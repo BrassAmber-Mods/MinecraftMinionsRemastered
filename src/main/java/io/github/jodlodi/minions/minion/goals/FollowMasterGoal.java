@@ -1,6 +1,7 @@
 package io.github.jodlodi.minions.minion.goals;
 
 import io.github.jodlodi.minions.minion.Minion;
+import io.github.jodlodi.minions.MinUtil;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.LivingEntity;
@@ -44,7 +45,7 @@ public class FollowMasterGoal extends Goal {
     public boolean canUse() {
         if (this.minion.sittingOrRiding()) return false;
         LivingEntity living = this.minion.getOwner();
-        if (living == null) {
+        if (living == null || !living.isAlive() || living.level() != this.minion.level()) {
             return false;
         } else if (living.isSpectator()) {
             return false;
@@ -58,7 +59,8 @@ public class FollowMasterGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        if (this.minion.sittingOrRiding()) return false;
+        if (this.minion.sittingOrRiding() || this.owner == null || this.minion.getOwner() != this.owner || !this.owner.isAlive()
+                || this.owner.level() != this.minion.level() || this.owner.isSpectator()) return false;
         if (this.navigation.isDone()) {
             return false;
         } else {
@@ -124,6 +126,7 @@ public class FollowMasterGoal extends Goal {
     }
 
     private boolean canTeleportTo(BlockPos p_25308_) {
+        if (!this.level.hasChunkAt(p_25308_) || !this.level.getWorldBorder().isWithinBounds(p_25308_)) return false;
         PathType blockpathtypes = WalkNodeEvaluator.getPathTypeStatic(this.minion, p_25308_);
         if (blockpathtypes != PathType.WALKABLE) {
             return false;
@@ -133,7 +136,7 @@ public class FollowMasterGoal extends Goal {
                 return false;
             } else {
                 BlockPos blockpos = p_25308_.subtract(this.minion.blockPosition());
-                return this.level.noCollision(this.minion, this.minion.getBoundingBox().move(blockpos));
+                return this.level.noCollision(this.minion, MinUtil.getRidingAABB(this.minion).move(blockpos));
             }
         }
     }
