@@ -1,15 +1,16 @@
 package io.github.jodlodi.minions.minion;
 
 import io.github.jodlodi.minions.MinUtil;
-import io.github.jodlodi.minions.work.WorkerPlayer;
-import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.items.ItemStackHandler;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
+import io.github.jodlodi.minions.MinionsConfig;
+import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.goals.*;
 import io.github.jodlodi.minions.network.BlinkPacket;
 import io.github.jodlodi.minions.network.PoofPacket;
 import io.github.jodlodi.minions.registry.CommonRegistry;
+import io.github.jodlodi.minions.registry.WorkerSounds;
+import io.github.jodlodi.minions.work.WorkerPlayer;
+import io.github.jodlodi.minions.work.WorkerRecallLedger;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -19,6 +20,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.OldUsersConverter;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
@@ -27,6 +29,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectUtil;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.PathfinderMob;
@@ -43,14 +46,16 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import net.minecraft.world.entity.EntityDimensions;
 import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.ParametersAreNonnullByDefault;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -73,6 +78,10 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     private boolean deliveryRequested;
     private boolean hauling;
     private WorkerPlayer workerPlayer;
+    private int boostTicks;
+    private int offlineTicks;
+    private long nextBoost;
+    private long pickupBlockedUntil;
     private final ItemStackHandler cargo = new ItemStackHandler(27) {
         @Override
         protected void onContentsChanged(int slot) {
@@ -122,6 +131,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     @Override
     public void tick() {
         if (!this.level().isClientSide) {
+            if (this.boostTicks > 0) this.boostTicks--;
             int blink = this.entityData.get(DATA_BLINKING);
             if (blink > -BLINK_COOLDOWN) {
                 this.entityData.set(DATA_BLINKING, blink - 1);
@@ -133,10 +143,22 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
             LivingEntity owner = this.getOwner();
             if (owner != null) {
+                this.offlineTicks = 0;
                 CommonRegistry.getMaster(owner).ifPresent(master -> {
                     this.accept(master);
                     if (!this.isRemoved() && this.tickCount % 20 == 0) this.saveWorkerState(master);
                 });
+            } else if (this.getOwnerUUID() != null && this.level() instanceof ServerLevel server) {
+                int seconds = MinionsConfig.OFFLINE_RECALL_SECONDS.get();
+                if (seconds > 0 && ++this.offlineTicks >= seconds * 20) {
+                    WorkerRecallLedger.get(server.getServer()).record(this);
+                    this.ejectPassengers(); this.discard(); return;
+                }
+            }
+            if (this.tickCount % 20 == 0 && this.getAttribute(Attributes.FOLLOW_RANGE) != null) {
+                double range = MinionsConfig.FOLLOW_RANGE.get();
+                this.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(range);
+                this.getNavigation().setMaxVisitedNodesMultiplier((float)Math.max(1, range / 16));
             }
         }
 
@@ -146,6 +168,8 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     @Override
     public void remove(RemovalReason removalReason) {
         if (!this.level().isClientSide && removalReason == RemovalReason.KILLED) {
+            if (this.getMastersCapability().isEmpty() && this.level() instanceof ServerLevel server && this.getOwnerUUID() != null)
+                WorkerRecallLedger.get(server.getServer()).record(this);
             this.getMastersCapability().ifPresent(master -> {
                 if (master.isMinion(this.getUUID())) {
                     this.saveWorkerState(master);
@@ -197,7 +221,8 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     @Override
     protected void pickUpItem(ItemEntity item) {
-        if (this.getMastersCapability().isEmpty() || item.hasPickUpDelay()
+        if (this.level().getGameTime() < this.pickupBlockedUntil || this.level().getGameTime() < item.getPersistentData().getLong("MinionPickupAfter")
+                || this.getMastersCapability().isEmpty() || item.hasPickUpDelay()
                 || item.getTarget() != null && !item.getTarget().equals(this.getOwnerUUID())) return;
         ItemStack original = item.getItem();
         ItemStack remainder = this.insertCargo(original.copy());
@@ -237,6 +262,32 @@ public class Minion extends PathfinderMob implements OwnableEntity {
     public boolean isHauling() { return this.hauling; }
     public void setHauling(boolean hauling) { this.hauling = hauling; }
 
+    public void dropCargo() {
+        if (!(this.level() instanceof ServerLevel level)) return;
+        this.pickupBlockedUntil = level.getGameTime() + 60;
+        for (int i = 0; i < this.cargo.getSlots(); i++) {
+            ItemStack stack = this.cargo.getStackInSlot(i); if (stack.isEmpty()) continue;
+            ItemEntity drop = new ItemEntity(level, this.getX(), this.getY() + 0.5, this.getZ(), stack.copy());
+            drop.setTarget(this.getOwnerUUID()); drop.setNoPickUpDelay();
+            drop.getPersistentData().putLong("MinionPickupAfter", level.getGameTime() + 60);
+            if (level.addFreshEntity(drop)) this.cargo.setStackInSlot(i, ItemStack.EMPTY);
+        }
+        if (!this.hasCargo()) this.deliveryRequested = false;
+        this.getMastersCapability().ifPresent(this::saveWorkerState);
+        WorkerSounds.play(this, "foryou");
+    }
+
+    public boolean boostOrRelease(ServerPlayer player) {
+        if (!player.getUUID().equals(this.getOwnerUUID())) return false;
+        if (this.isVehicle()) { this.ejectPassengers(); return true; }
+        if (this.level().getGameTime() < this.nextBoost) return false;
+        this.nextBoost = this.level().getGameTime() + 20; this.boostTicks = 600;
+        WorkerSounds.play(this, "minionsqueak");
+        player.crit(this); this.getMastersCapability().ifPresent(this::saveWorkerState); return true;
+    }
+
+    public CompoundTag recallState() { return this.workerState(); }
+
     public int unloadCargo(IItemHandler destination) {
         int moved = 0;
         for (int i = 0; i < this.cargo.getSlots(); i++) {
@@ -274,6 +325,8 @@ public class Minion extends PathfinderMob implements OwnableEntity {
         tag.putBoolean("DeliveryRequested", this.deliveryRequested);
         tag.putString("WorkerDimension", this.level().dimension().location().toString());
         tag.putLong("WorkerPosition", this.blockPosition().asLong());
+        tag.putInt("WorkBoostTicks", this.boostTicks);
+        tag.putInt("OfflineTicks", this.offlineTicks);
         return tag;
     }
 
@@ -290,9 +343,11 @@ public class Minion extends PathfinderMob implements OwnableEntity {
             }
             if (tag.contains("CustomName")) {
                 try { this.setCustomName(Component.Serializer.fromJson(tag.getString("CustomName"), this.registryAccess())); }
-                catch (RuntimeException exception) { io.github.jodlodi.minions.MinionsRemastered.LOGGER.warn("Invalid saved minion name", exception); }
+                catch (RuntimeException exception) { MinionsRemastered.LOGGER.warn("Invalid saved minion name", exception); }
             }
             this.deliveryRequested = tag.getBoolean("DeliveryRequested");
+            this.boostTicks = Math.max(0, Math.min(600, tag.getInt("WorkBoostTicks")));
+            this.offlineTicks = Math.max(0, tag.getInt("OfflineTicks"));
         } finally { this.restoringCargo = false; }
     }
 
@@ -347,6 +402,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     @Override
     public boolean hurt(DamageSource damageSource, float v) {
+        if (!this.level().isClientSide && damageSource.getEntity() instanceof ServerPlayer player) return this.boostOrRelease(player);
         return false;
     }
 
@@ -385,7 +441,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     @SuppressWarnings("deprecation")
     public float getMineSpeed() {
-        float speed = 3.75F;
+        float speed = this.boostTicks > 0 ? 7.5F : 3.75F;
 
         if (MobEffectUtil.hasDigSpeed(this)) {
             speed *= 1.0F + (float)(MobEffectUtil.getDigSpeedAmplification(this) + 1) * 0.2F;
@@ -548,7 +604,7 @@ public class Minion extends PathfinderMob implements OwnableEntity {
 
     protected boolean canBeControlledBy(Entity entity) {
         if (entity instanceof Player player) {
-            return player.getMainHandItem().is(CommonRegistry.MASTERS_STAFF.get()) || player.getOffhandItem().is(CommonRegistry.MASTERS_STAFF.get());
+            return player.getUUID().equals(this.getOwnerUUID()) && (player.getMainHandItem().is(CommonRegistry.MASTERS_STAFF.get()) || player.getOffhandItem().is(CommonRegistry.MASTERS_STAFF.get()));
         } else {
             return false;
         }

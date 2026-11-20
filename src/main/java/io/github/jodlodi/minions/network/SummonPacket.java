@@ -1,18 +1,23 @@
 package io.github.jodlodi.minions.network;
 
+import io.github.jodlodi.minions.MinionsConfig;
+import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.Minion;
+import io.github.jodlodi.minions.registry.WorkerSounds;
 import io.github.jodlodi.minions.work.CommandValidation;
-import net.minecraft.core.Direction;
+import io.github.jodlodi.minions.work.GameplayRules;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
-import io.github.jodlodi.minions.MinionsRemastered;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.ParametersAreNonnullByDefault;
+
+import java.util.List;
 
 @ParametersAreNonnullByDefault
 public class SummonPacket extends AbstractServerboundPacket {
@@ -49,14 +54,15 @@ public class SummonPacket extends AbstractServerboundPacket {
 
     @Override
     void execute(ServerPlayer player, IMasterCapability master) {
-        if (!CommandValidation.block(player, this.pos) || master.minionCount() >= 4 || this.specificID < -1 || this.specificID >= 4) return;
+        int limit = MinionsConfig.MINIONS_PER_PLAYER.get();
+        if (!CommandValidation.block(player, this.pos) || master.minionCount() >= limit || this.specificID < -1 || this.specificID >= limit) return;
         int slot = this.specificID >= 0 ? this.specificID : master.getMinions().indexOf(null);
         if (slot < 0 || master.getMinions().get(slot) != null) return;
         BlockPos base = player.level().getBlockState(this.pos).canBeReplaced() ? this.pos : this.pos.above();
         Minion minion = new Minion(player.level());
         minion.setOwnerUUID(player.getUUID());
         BlockPos destination = null;
-        for (BlockPos candidate : java.util.List.of(base, base.north(), base.south(), base.east(), base.west())) {
+        for (BlockPos candidate : List.of(base, base.north(), base.south(), base.east(), base.west())) {
             if (!player.level().isInWorldBounds(candidate) || !player.level().hasChunkAt(candidate) || !player.level().getWorldBorder().isWithinBounds(candidate)
                     || !player.level().getBlockState(candidate).getFluidState().isEmpty() || !player.level().mayInteract(player, candidate)) continue;
             Vec3 center = Vec3.atBottomCenterOf(candidate);
@@ -64,9 +70,11 @@ public class SummonPacket extends AbstractServerboundPacket {
             if (player.level().noCollision(minion, minion.getBoundingBox())) { destination = candidate; break; }
         }
         if (destination == null) return;
+        if (!GameplayRules.payForOrder(player)) return;
         master.addSpecificMinion(minion.getUUID(), slot);
         master.finalizeMinion(minion);
         if (!player.level().addFreshEntity(minion)) { master.removeMinion(minion.getUUID()); return; }
         minion.blink(destination);
+        WorkerSounds.play(minion, "minionspawn");
     }
 }

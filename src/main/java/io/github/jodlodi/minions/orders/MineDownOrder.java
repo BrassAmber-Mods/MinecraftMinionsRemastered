@@ -2,6 +2,7 @@ package io.github.jodlodi.minions.orders;
 
 import io.github.jodlodi.minions.MinUtil;
 import io.github.jodlodi.minions.MinionsRemastered;
+import io.github.jodlodi.minions.work.GameplayRules;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -51,7 +52,7 @@ public class MineDownOrder extends AbstractWorkOrder {
     private void validate() {
         long width = (long)this.maxPos.getX() - this.minPos.getX() + 1;
         long depth = (long)this.maxPos.getZ() - this.minPos.getZ() + 1;
-        if (width < 1 || width > 32 || width != depth || this.minPos.getY() != this.maxPos.getY()
+        if (!GameplayRules.isHoleWidth(width, 31) || width != depth || this.minPos.getY() != this.maxPos.getY()
                 || this.startDir < 0 || this.startDir > 3 || this.stairs < 0 || this.stairs > 2) throw new IllegalArgumentException("Invalid shaft bounds");
     }
 

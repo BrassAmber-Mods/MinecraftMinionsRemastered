@@ -1,13 +1,14 @@
 package io.github.jodlodi.minions.network;
 
+import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
-import io.github.jodlodi.minions.work.CommandValidation;
 import io.github.jodlodi.minions.orders.MineDownOrder;
+import io.github.jodlodi.minions.work.CommandValidation;
+import io.github.jodlodi.minions.work.GameplayRules;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
-import io.github.jodlodi.minions.MinionsRemastered;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -56,7 +57,7 @@ public class MineDownButtonPacket extends AbstractServerboundPacket {
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
         if (!CommandValidation.shaft(player, this.minPos, this.maxPos, this.startDir, this.stairs)) return;
-		capability.setOrder(new MineDownOrder(this.minPos, this.maxPos, this.startDir, this.stairs));
+		if (!GameplayRules.start(player, capability, new MineDownOrder(this.minPos, this.maxPos, this.startDir, this.stairs))) return;
 		capability.setPaused(this.paused);
 	}
 }

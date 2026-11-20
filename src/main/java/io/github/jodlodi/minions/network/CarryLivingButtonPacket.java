@@ -1,18 +1,20 @@
 package io.github.jodlodi.minions.network;
 
+import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
-import io.github.jodlodi.minions.work.CommandValidation;
-import net.minecraft.world.entity.LivingEntity;
 import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.orders.CarryLivingOrder;
+import io.github.jodlodi.minions.work.CommandValidation;
+import io.github.jodlodi.minions.work.GameplayRules;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
-import io.github.jodlodi.minions.MinionsRemastered;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 
 import javax.annotation.ParametersAreNonnullByDefault;
+
 import java.util.UUID;
 
 @ParametersAreNonnullByDefault
@@ -45,6 +47,6 @@ public class CarryLivingButtonPacket extends AbstractServerboundPacket {
 		Entity entity = player.serverLevel().getEntity(this.id);
 		if (!(entity instanceof LivingEntity) || !CommandValidation.entity(player, entity) || !CommandValidation.friendly(player, entity)) return;
 		if (entity.getVehicle() instanceof Minion minion && CommandValidation.owned(player, capability, minion)) entity.stopRiding();
-		else if (!entity.isPassenger()) capability.setOrder(new CarryLivingOrder(this.id, entity.blockPosition()));
+		else if (!entity.isPassenger()) GameplayRules.start(player, capability, new CarryLivingOrder(this.id, entity.blockPosition()));
 	}
 }

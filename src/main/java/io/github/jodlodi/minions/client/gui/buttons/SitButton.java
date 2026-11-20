@@ -40,6 +40,7 @@ public class SitButton extends AbstractMastersButton {
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Sit").withStyle(ChatFormatting.BLUE);
+        boolean sitting = this.getScreen().target instanceof Minion minion && minion.getSit();
+        return Component.translatable(sitting ? "gui.minions_remastered.stand" : "gui.minions_remastered.sit").withStyle(ChatFormatting.BLUE);
     }
 }

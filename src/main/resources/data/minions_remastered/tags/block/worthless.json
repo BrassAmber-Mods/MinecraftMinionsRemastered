@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:stone", "minecraft:cobblestone", "minecraft:deepslate", "minecraft:cobbled_deepslate",
+    "minecraft:tuff", "minecraft:calcite", "minecraft:granite", "minecraft:diorite", "minecraft:andesite",
+    "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:rooted_dirt", "minecraft:grass_block", "minecraft:podzol", "minecraft:mycelium",
+    "minecraft:sand", "minecraft:red_sand", "minecraft:sandstone", "minecraft:red_sandstone", "minecraft:gravel",
+    "minecraft:obsidian", "minecraft:bedrock", "minecraft:netherrack", "minecraft:blackstone", "minecraft:basalt", "minecraft:smooth_basalt",
+    "minecraft:soul_sand", "minecraft:soul_soil", "minecraft:snow", "minecraft:snow_block", "minecraft:stone_brick_stairs",
+    "minecraft:torch", "minecraft:wall_torch", "minecraft:blackstone_stairs", "minecraft:gilded_blackstone"
+  ]
+}

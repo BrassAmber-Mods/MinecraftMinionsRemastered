@@ -5,14 +5,16 @@ import io.github.jodlodi.minions.deeds.EvilDeed;
 import io.github.jodlodi.minions.network.CommitDeedPacket;
 import io.github.jodlodi.minions.network.DeedsScreenPacket;
 import io.github.jodlodi.minions.network.OpenDeedsPacket;
-import java.util.ArrayList;
-import java.util.List;
+import io.github.jodlodi.minions.registry.CommonRegistry;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class DeedsScreen extends Screen {
     private final DeedsScreenPacket state;
@@ -21,6 +23,7 @@ public final class DeedsScreen extends Screen {
     private boolean choosingDeed;
     private int remainingTicks;
     private boolean requestedRefresh;
+    private int cheatProgress;
 
     public DeedsScreen(DeedsScreenPacket state) {
         super(Component.translatable("gui.minions_remastered.deeds.title"));
@@ -55,6 +58,11 @@ public final class DeedsScreen extends Screen {
                 this.choosingDeed = true;
                 this.rebuildWidgets();
             }).bounds(left, this.height / 2, width, 20).build());
+            if (this.minecraft != null && this.minecraft.player != null && CommonRegistry.getMaster(this.minecraft.player)
+                    .map(master -> master.minionCount() > 0).orElse(false)) {
+                this.addRenderableWidget(Button.builder(Component.translatable("gui.minions_remastered.orders"), button -> this.minecraft.setScreen(new WorkerOrdersScreen()))
+                        .bounds(left, this.height / 2 + 44, width, 20).build());
+            }
         }
         this.addRenderableWidget(Button.builder(Component.translatable("gui.minions_remastered.deeds.cancel"), button -> this.onClose())
                 .bounds(left, this.height / 2 + 72, width, 20).build());
@@ -64,6 +72,18 @@ public final class DeedsScreen extends Screen {
     private boolean canCommit() {
         return this.state.xpCost() >= 0 && this.remainingTicks == 0 && this.state.options().size() == 3
                 && this.minecraft != null && this.minecraft.player != null && this.minecraft.player.experienceLevel >= this.state.xpCost();
+    }
+
+    @Override public boolean charTyped(char codePoint, int modifiers) {
+        String phrase = "iluvevil";
+        char letter = Character.toLowerCase(codePoint);
+        this.cheatProgress = letter == phrase.charAt(this.cheatProgress) ? this.cheatProgress + 1 : letter == 'i' ? 1 : 0;
+        if (this.cheatProgress == phrase.length()) {
+            this.cheatProgress = 0;
+            PacketDistributor.sendToServer(new CommitDeedPacket(this.state.offerId(), "__legacy_cheat"));
+            this.onClose(); return true;
+        }
+        return super.charTyped(codePoint, modifiers);
     }
 
     private void updateAvailability() {

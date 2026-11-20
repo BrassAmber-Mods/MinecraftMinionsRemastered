@@ -1,12 +1,15 @@
 package io.github.jodlodi.minions.network;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
-import io.github.jodlodi.minions.work.CommandValidation;
 import io.github.jodlodi.minions.registry.CommonRegistry;
+import io.github.jodlodi.minions.work.CommandValidation;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+
+import java.util.Map;
+import java.util.WeakHashMap;
 
 public abstract class AbstractServerboundPacket implements CustomPacketPayload {
     public abstract void encode(FriendlyByteBuf buf);
@@ -14,7 +17,7 @@ public abstract class AbstractServerboundPacket implements CustomPacketPayload {
     abstract void execute(ServerPlayer player, IMasterCapability capability);
 
     public static class Handler {
-        private static final java.util.Map<ServerPlayer, long[]> RATE = new java.util.WeakHashMap<>();
+        private static final Map<ServerPlayer, long[]> RATE = new WeakHashMap<>();
 
         private static boolean allow(ServerPlayer player) {
             long now = player.level().getGameTime();

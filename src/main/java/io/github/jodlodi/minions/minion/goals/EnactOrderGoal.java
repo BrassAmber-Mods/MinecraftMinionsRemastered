@@ -3,6 +3,7 @@ package io.github.jodlodi.minions.minion.goals;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.orders.AbstractOrder;
+import io.github.jodlodi.minions.orders.MoveOrder;
 import io.github.jodlodi.minions.registry.CommonRegistry;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.world.entity.LivingEntity;
@@ -12,6 +13,7 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.pathfinder.PathType;
 
 import javax.annotation.ParametersAreNonnullByDefault;
+
 import java.util.EnumSet;
 import java.util.Optional;
 
@@ -39,7 +41,7 @@ public class EnactOrderGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (this.minion.sittingOrRiding() || this.minion.isVehicle() || this.minion.needsDelivery()) return false;
+        if (this.minion.sittingOrRiding()) return false;
         LivingEntity living = this.minion.getOwner();
         if (living != null && living.isAlive() && living.level() == this.minion.level()) {
             this.owner = living;
@@ -50,7 +52,7 @@ public class EnactOrderGoal extends Goal {
                 AbstractOrder order = this.masterCapability.getOrder();
                 if (order == null) return false;
                 this.order = order;
-                return this.order.goalCanUse(this);
+                return this.canAct(this.order) && this.order.goalCanUse(this);
             }
         }
         return false;
@@ -61,7 +63,7 @@ public class EnactOrderGoal extends Goal {
         if (this.owner == null || this.minion.getOwner() != this.owner || !this.owner.isAlive() || this.owner.isSpectator()
                 || this.owner.level() != this.minion.level()) return false;
         if (this.masterCapability.isPaused() || !this.masterCapability.isOrderIn(this.minion.level())) return false;
-        if (this.minion.sittingOrRiding() || this.minion.isVehicle() || this.minion.needsDelivery()) return false;
+        if (!this.canAct(this.order)) return false;
         return this.order == this.masterCapability.getOrder() && this.order.goalCanContinueToUse(this);
     }
 
@@ -71,6 +73,12 @@ public class EnactOrderGoal extends Goal {
         this.oldWaterCost = this.minion.getPathfindingMalus(PathType.WATER);
         this.minion.setPathfindingMalus(PathType.WATER, 0.0F);
         this.order.goalStart(this);
+    }
+
+    private boolean canAct(AbstractOrder order) {
+        boolean moving = order instanceof MoveOrder;
+        return !this.minion.sittingOrRiding() && (!this.minion.isVehicle() || moving && this.minion.getControllingPassenger() == null)
+                && (moving || !this.minion.needsDelivery());
     }
 
     @Override

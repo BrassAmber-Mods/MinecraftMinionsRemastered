@@ -30,11 +30,12 @@ public class StopOrderButton extends AbstractMastersButton {
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Pause / play order").withStyle(ChatFormatting.DARK_RED);
+        return Component.translatable("gui.minions_remastered.pause_resume").withStyle(ChatFormatting.DARK_RED);
     }
 
     @Override
     protected List<MutableComponent> getTooltipLines() {
-        return List.of(Component.literal("[SHIFT]").withStyle(this.screen.isShiftKeyDown() ? ChatFormatting.AQUA : ChatFormatting.DARK_RED).append(Component.literal(" Cancel Order").withStyle(ChatFormatting.DARK_GRAY)));
+        return List.of(Component.translatable("gui.minions_remastered.shift").withStyle(this.screen.isShiftKeyDown() ? ChatFormatting.AQUA : ChatFormatting.DARK_RED)
+                .append(Component.translatable("gui.minions_remastered.cancel_order_hint").withStyle(ChatFormatting.DARK_GRAY)));
     }
 }

@@ -10,7 +10,11 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class PacketRegistry {
     public static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("3");
+        PayloadRegistrar registrar = event.registrar("4");
+        registrar.playToServer(StaffActionPacket.TYPE, StaffActionPacket.STREAM_CODEC, AbstractServerboundPacket.Handler::onMessage);
+        registrar.playToServer(DropWorkerPacket.TYPE, DropWorkerPacket.STREAM_CODEC, AbstractServerboundPacket.Handler::onMessage);
+        registrar.playToServer(StaffLightningPacket.TYPE, StaffLightningPacket.STREAM_CODEC, AbstractServerboundPacket.Handler::onMessage);
+        registrar.playToClient(LightningVisualPacket.TYPE, LightningVisualPacket.STREAM_CODEC, LightningVisualPacket::handle);
         registrar.playToClient(DeedsScreenPacket.TYPE, DeedsScreenPacket.STREAM_CODEC, DeedsScreenPacket::handle);
         registrar.playToServer(OpenDeedsPacket.TYPE, OpenDeedsPacket.STREAM_CODEC, OpenDeedsPacket::handle);
         registrar.playToServer(CommitDeedPacket.TYPE, CommitDeedPacket.STREAM_CODEC, CommitDeedPacket::handle);

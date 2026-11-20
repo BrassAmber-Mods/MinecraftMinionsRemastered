@@ -1,21 +1,25 @@
 package io.github.jodlodi.minions.minion.goals;
 
-import io.github.jodlodi.minions.MinUtil;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.Minion;
+import io.github.jodlodi.minions.orders.StripMineOrder;
+import io.github.jodlodi.minions.registry.WorkerSounds;
 import io.github.jodlodi.minions.work.WorkerActions;
 import io.github.jodlodi.minions.work.WorkerChunks;
-import java.util.EnumSet;
+import io.github.jodlodi.minions.work.WorkerMovement;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
+
+import java.util.EnumSet;
 
 /** Cargo stays with the worker while it walks home, waits for space, and resumes its saved job. */
 public final class HaulItemsGoal extends Goal {
@@ -25,6 +29,7 @@ public final class HaulItemsGoal extends Goal {
     private int stuck;
     private double bestDistance = Double.MAX_VALUE;
     private BlockPos lastDestination;
+    private Vec3 approach;
     private long lastMessage;
 
     public HaulItemsGoal(Minion worker) {
@@ -37,7 +42,8 @@ public final class HaulItemsGoal extends Goal {
         if (!this.worker.hasCargo() || this.worker.sittingOrRiding() || this.worker.isVehicle()
                 || !(this.worker.getOwner() instanceof ServerPlayer owner) || !owner.isAlive() || owner.level() != this.worker.level()) return false;
         this.master = this.worker.getMastersCapability().orElse(null);
-        return this.master != null && (this.worker.needsDelivery() || this.master.getOrder() == null || this.master.isPaused() || !this.master.isOrderIn(this.worker.level()));
+        return this.master != null && (this.worker.needsDelivery() || this.master.getOrder() == null || this.master.isPaused() || !this.master.isOrderIn(this.worker.level())
+                || this.master.getOrder() instanceof StripMineOrder strips && !strips.hasSlot(this.worker.getMinionID(this.master)));
     }
 
     @Override
@@ -64,14 +70,14 @@ public final class HaulItemsGoal extends Goal {
         if (!(this.worker.level() instanceof ServerLevel level) || !(this.worker.getOwner() instanceof ServerPlayer owner)) return;
         if (--this.retry > 0) return;
         this.retry = 20;
-        if (!this.master.getContainerDimension().equals(level.dimension().location())) { this.waiting(owner); return; }
+        if (!this.master.getContainerDimension().equals(level.dimension().location())) { this.waiting(owner, "storage_dimension"); return; }
         BlockPos block = this.master.getContainerBlock();
         Entity target = null;
         Vec3 destination;
         if (block != null) {
             WorkerChunks.keepLoaded(owner, level, block);
-            if (!level.hasChunkAt(block)) { this.waiting(owner); return; }
-            if (level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, block, null) == null) {
+            if (!level.hasChunkAt(block)) { this.waiting(owner, "storage_loading"); return; }
+            if (level.getCapability(Capabilities.ItemHandler.BLOCK, block, null) == null) {
                 block = null;
                 target = owner;
             }
@@ -79,7 +85,7 @@ public final class HaulItemsGoal extends Goal {
             target = level.getEntity(this.master.getContainerEntity());
             if (target == null) {
                 BlockPos last = this.master.getContainerEntityPosition();
-                if (last != null) { WorkerChunks.keepLoaded(owner, level, last); if (!level.hasChunkAt(last)) { this.waiting(owner); return; } }
+                if (last != null) { WorkerChunks.keepLoaded(owner, level, last); if (!level.hasChunkAt(last)) { this.waiting(owner, "storage_loading"); return; } }
                 target = owner;
             }
         }
@@ -88,6 +94,7 @@ public final class HaulItemsGoal extends Goal {
             this.lastDestination = BlockPos.containing(destination);
             this.bestDistance = Double.MAX_VALUE;
             this.stuck = 0;
+            this.approach = null;
         }
         double distance = this.worker.distanceToSqr(destination);
         this.worker.getLookControl().setLookAt(destination);
@@ -96,26 +103,33 @@ public final class HaulItemsGoal extends Goal {
         if (distance <= 6.25D && visible) {
             this.worker.getNavigation().stop();
             IItemHandler handler = block != null ? WorkerActions.container(this.worker, block) : WorkerActions.container(this.worker, target);
-            if (handler == null || this.worker.unloadCargo(handler) == 0) { this.retry = 40; this.waiting(owner); }
-            else this.retry = 1;
+            if (handler == null) { this.retry = 40; this.waiting(owner, "storage_unavailable"); }
+            else if (this.worker.unloadCargo(handler) == 0) {
+                this.retry = 40; this.waiting(owner, target == owner ? "inventory_full" : "storage_full");
+            }
+            else {
+                this.retry = 1;
+                if (!this.worker.hasCargo()) WorkerSounds.play(this.worker, "foryou");
+            }
             return;
         }
         if (distance < this.bestDistance - 0.1D) { this.bestDistance = distance; this.stuck = 0; }
         else this.stuck += 20;
-        BlockPos approach = MinUtil.randomOpenNearbyOrAboveOrBelow(BlockPos.containing(destination), level);
-        Vec3 point = approach != null ? Vec3.atBottomCenterOf(approach) : destination;
+        if (this.approach == null || !WorkerMovement.canStand(this.worker, this.approach))
+            this.approach = WorkerMovement.findStandNear(this.worker, BlockPos.containing(destination));
+        Vec3 point = this.approach != null ? this.approach : destination;
         this.worker.getNavigation().moveTo(point.x, point.y, point.z, 1.1D);
-        if (this.stuck >= 200 && approach != null && this.worker.canBlink()) {
-            this.worker.blink(approach);
+        if (this.stuck >= 60 && this.approach != null && this.worker.canBlink()) {
+            this.worker.blink(this.approach);
             this.stuck = 0;
         }
     }
 
-    private void waiting(ServerPlayer owner) {
+    private void waiting(ServerPlayer owner, String reason) {
         this.worker.getNavigation().stop();
         if (owner.level().getGameTime() - this.lastMessage >= 200) {
             this.lastMessage = owner.level().getGameTime();
-            owner.displayClientMessage(Component.translatable("message.minions_remastered.work.storage", this.worker.getName()), true);
+            owner.displayClientMessage(Component.translatable("message.minions_remastered.work." + reason, this.worker.getName()), true);
         }
     }
 }

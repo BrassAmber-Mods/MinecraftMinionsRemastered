@@ -1,13 +1,18 @@
 package io.github.jodlodi.minions.deeds;
 
+import io.github.jodlodi.minions.MinionsConfig;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import net.minecraft.network.chat.Component;
 
 /** The original Minions default deeds and their audio durations, in seconds. */
-public record EvilDeed(String id, int durationSeconds) {
+public record EvilDeed(String id, int durationSeconds, String label, String sound) {
+    public EvilDeed(String id, int durationSeconds) { this(id, durationSeconds, "", ""); }
     public static final List<EvilDeed> ALL = List.of(
             new EvilDeed("spawnsatanistcult", 3),
             new EvilDeed("gong", 1),
@@ -37,12 +42,33 @@ public record EvilDeed(String id, int durationSeconds) {
             new EvilDeed("teabagnuns", 5),
             new EvilDeed("leeroy", 5));
     private static final Map<String, EvilDeed> BY_ID = ALL.stream().collect(Collectors.toUnmodifiableMap(EvilDeed::id, Function.identity()));
+    private static List<? extends String> cachedCustom;
+    private static Map<String, EvilDeed> configuredById = BY_ID;
+    private static List<EvilDeed> configuredDeeds = ALL;
 
-    public static EvilDeed byId(String id) {
-        return BY_ID.get(id);
+    public static synchronized EvilDeed byId(String id) {
+        configured(); return configuredById.get(id);
+    }
+
+    public static synchronized List<EvilDeed> configured() {
+        var custom = MinionsConfig.CUSTOM_DEEDS.get();
+        if (custom.equals(cachedCustom)) return configuredDeeds;
+        Map<String, EvilDeed> deeds = new LinkedHashMap<>();
+        ALL.forEach(deed -> deeds.put(deed.id(), deed));
+        for (String entry : custom.stream().limit(256).toList()) {
+            String[] parts = entry.split("\\|", 4);
+            if (parts.length != 4 || !parts[0].matches("[a-z0-9_.-]{1,64}") || parts[1].length() > 160
+                    || ResourceLocation.tryParse(parts[2]) == null) continue;
+            try {
+                int duration = Integer.parseInt(parts[3]);
+                if (duration >= 1 && duration <= 120) deeds.put(parts[0], new EvilDeed(parts[0], duration, parts[1], parts[2]));
+            } catch (NumberFormatException ignored) {}
+        }
+        cachedCustom = List.copyOf(custom); configuredById = Map.copyOf(deeds); configuredDeeds = List.copyOf(deeds.values());
+        return configuredDeeds;
     }
 
     public Component displayName() {
-        return Component.translatable("deed.minions_remastered." + this.id);
+        return this.label.isEmpty() ? Component.translatable("deed.minions_remastered." + this.id) : Component.literal(this.label);
     }
 }

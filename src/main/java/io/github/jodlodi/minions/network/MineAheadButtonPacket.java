@@ -1,14 +1,15 @@
 package io.github.jodlodi.minions.network;
 
+import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
-import io.github.jodlodi.minions.work.CommandValidation;
 import io.github.jodlodi.minions.orders.MineAheadOrder;
+import io.github.jodlodi.minions.work.CommandValidation;
+import io.github.jodlodi.minions.work.GameplayRules;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
-import io.github.jodlodi.minions.MinionsRemastered;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -57,7 +58,7 @@ public class MineAheadButtonPacket extends AbstractServerboundPacket {
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
         if (!CommandValidation.tunnel(player, this.minPos, this.maxPos, this.direction, this.depth)) return;
-		capability.setOrder(new MineAheadOrder(this.minPos, this.maxPos, Direction.values()[this.direction], this.depth));
+		if (!GameplayRules.start(player, capability, new MineAheadOrder(this.minPos, this.maxPos, Direction.values()[this.direction], this.depth))) return;
 		capability.setPaused(this.paused);
 	}
 }

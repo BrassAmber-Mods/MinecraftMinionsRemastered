@@ -6,7 +6,6 @@ import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.minion.goals.EnactOrderGoal;
 import io.github.jodlodi.minions.work.CommandValidation;
 import io.github.jodlodi.minions.work.WorkerChunks;
-import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -16,6 +15,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+
+import java.util.UUID;
 
 public class CarryLivingOrder extends AbstractOrder {
     public static final ResourceLocation ID = MinionsRemastered.locate("carry_living_order");
@@ -72,7 +73,8 @@ public class CarryLivingOrder extends AbstractOrder {
         worker.getLookControl().setLookAt(victim);
         if (worker.distanceToSqr(victim) > 3.0D) {
             if (worker.tickCount % 10 == 0) worker.getNavigation().moveTo(victim, goal.getSpeedModifier());
-        } else if (!worker.getBlinking() && victim.startRiding(worker, true)) {
+        } else if (!worker.getBlinking() && worker.hasLineOfSight(victim) && goal.getOwner() instanceof ServerPlayer owner
+                && CommandValidation.friendly(owner, victim) && victim.startRiding(worker, true)) {
             goal.getNavigation().stop();
         }
     }

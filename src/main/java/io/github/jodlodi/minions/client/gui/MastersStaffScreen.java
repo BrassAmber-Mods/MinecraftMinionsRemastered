@@ -4,17 +4,19 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import org.joml.Quaternionf;
 import com.mojang.math.Axis;
-import net.minecraft.client.gui.GuiGraphics;
-import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.MinReflections;
+import io.github.jodlodi.minions.MinionsConfig;
+import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.client.gui.buttons.*;
 import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.registry.CommonRegistry;
+import io.github.jodlodi.minions.work.GameplayRules;
+import io.github.jodlodi.minions.work.StaffActions;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.client.GameNarrator;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
@@ -36,6 +38,7 @@ import net.minecraft.world.phys.HitResult;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import org.joml.Quaternionf;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -94,7 +97,9 @@ public class MastersStaffScreen extends Screen {
                 BlockEntity blockEntity = this.player.level().getBlockEntity(pos);
 
                 // FLAGS
-                boolean minionSpace = capability.minionCount() < 4;
+                boolean minionSpace = capability.minionCount() < MinionsConfig.MINIONS_PER_PLAYER.get();
+                if (capability.minionCount() > 0) buttonSetup[3] = new StaffActionButton(-BUTTON_DISTANCE, 0, this, pos,
+                        StaffActions.MOVE, "gui.minions_remastered.move", StaffActions.FOLLOW, "gui.minions_remastered.follow");
 
                 // TOP BUTTON // SUMMONING
                 if (minionSpace && !secondary) {
@@ -110,11 +115,14 @@ public class MastersStaffScreen extends Screen {
 
                 // BOTTOM BUTTON // ORDERS
                 if (capability.getOrder() == null) {
-                    if (this.player.level().getBlockState(hitResult.getBlockPos()).is(BlockTags.LOGS)) {
+                    if (GameplayRules.isTree(this.player.level().getBlockState(hitResult.getBlockPos()))) {
                         buttonSetup[2] = new ChopOrderButton(0, BUTTON_DISTANCE, blockStaffScreen);
                     } else if (this.player.level().getBlockState(hitResult.getBlockPos()).is(BlockTags.WART_BLOCKS)) {
                         buttonSetup[2] = new HoeWartButton(0, BUTTON_DISTANCE, blockStaffScreen);
-                    }else if (hitResult.getDirection().getAxis() == Direction.Axis.Y) {
+                    } else if (GameplayRules.isValuable(this.player.level().getBlockState(pos))) {
+                        buttonSetup[2] = new StaffActionButton(0, BUTTON_DISTANCE, this, pos, StaffActions.VEIN,
+                                "gui.minions_remastered.vein", StaffActions.STRIP, "gui.minions_remastered.stripmine");
+                    } else if (hitResult.getDirection().getAxis() == Direction.Axis.Y) {
                         buttonSetup[2] = new DigOrderButton(0, BUTTON_DISTANCE, blockStaffScreen);
                     } else {
                         buttonSetup[2] = new MineOrderButton(0, BUTTON_DISTANCE, blockStaffScreen);
@@ -140,9 +148,14 @@ public class MastersStaffScreen extends Screen {
 
                         // BOTTOM BUTTON // ORDERS
                         buttonSetup[2] = new SitButton(0, BUTTON_DISTANCE, entityStaffScreen, capability);
+                        buttonSetup[3] = new DropWorkerButton(-BUTTON_DISTANCE, 0, entityStaffScreen);
                     }
                 } else { // FRIENDLY MOB
                     if (!entityStaffScreen.hostile) {
+                        if (entityStaffScreen.target instanceof LivingEntity) {
+                            buttonSetup[2] = capability.getOrder() == null ? new CarryLivingOrderButton(0, BUTTON_DISTANCE, entityStaffScreen)
+                                    : new StopOrderButton(0, BUTTON_DISTANCE, entityStaffScreen);
+                        }
                         if (entityStaffScreen.target.getCapability(Capabilities.ItemHandler.ENTITY) != null) {
                             // RIGHT BUTTON // STORAGE
                             buttonSetup[1] = new ContainerButton(BUTTON_DISTANCE, 0, this);

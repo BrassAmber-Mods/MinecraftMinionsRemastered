@@ -97,7 +97,8 @@ public abstract class AbstractAdjustableOrderButton extends AbstractMastersButto
     @Override
     protected final List<MutableComponent> getTooltipLines() {
         List<MutableComponent> list = new ArrayList<>(this.getAdjustableTooltip());
-        if (this.pausable) list.add(Component.literal("[SHIFT]").withStyle(this.screen.isShiftKeyDown() ? ChatFormatting.AQUA : ChatFormatting.DARK_RED).append(Component.literal(" Preview mode").withStyle(ChatFormatting.DARK_GRAY)));
+        if (this.pausable) list.add(Component.translatable("gui.minions_remastered.shift").withStyle(this.screen.isShiftKeyDown() ? ChatFormatting.AQUA : ChatFormatting.DARK_RED)
+                .append(Component.translatable("gui.minions_remastered.preview_hint").withStyle(ChatFormatting.DARK_GRAY)));
         return list;
     }
 

@@ -28,6 +28,6 @@ public class ClearContainerButton extends AbstractMastersButton {
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Remove Container").withStyle(ChatFormatting.BLUE);
+        return Component.translatable("gui.minions_remastered.clear_storage").withStyle(ChatFormatting.BLUE);
     }
 }

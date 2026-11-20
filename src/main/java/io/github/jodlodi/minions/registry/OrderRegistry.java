@@ -17,5 +17,9 @@ public class OrderRegistry {
         ORDERS.put(MineAheadOrder.ID, MineAheadOrder::new);
         ORDERS.put(ChopOrder.ID, ChopOrder::new);
         ORDERS.put(HoeWartOrder.ID, HoeWartOrder::new);
+        ORDERS.put(VeinOrder.ID, VeinOrder::new);
+        ORDERS.put(MoveOrder.ID, MoveOrder::new);
+        ORDERS.put(ExcavateOrder.ID, ExcavateOrder::new);
+        ORDERS.put(StripMineOrder.ID, StripMineOrder::new);
     }
 }

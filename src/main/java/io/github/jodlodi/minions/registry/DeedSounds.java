@@ -2,12 +2,14 @@ package io.github.jodlodi.minions.registry;
 
 import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.deeds.EvilDeed;
-import java.util.Map;
-import java.util.stream.Collectors;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class DeedSounds {
     public static final DeferredRegister<SoundEvent> SOUNDS = DeferredRegister.create(Registries.SOUND_EVENT, MinionsRemastered.MODID);
@@ -21,6 +23,7 @@ public final class DeedSounds {
     }
 
     public static SoundEvent forDeed(EvilDeed deed) {
+        if (!deed.sound().isEmpty()) return SoundEvent.createVariableRangeEvent(ResourceLocation.parse(deed.sound()));
         return DEEDS.get(deed.id()).get();
     }
 

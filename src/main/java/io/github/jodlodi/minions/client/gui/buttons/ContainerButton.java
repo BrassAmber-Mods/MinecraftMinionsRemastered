@@ -3,7 +3,6 @@ package io.github.jodlodi.minions.client.gui.buttons;
 import io.github.jodlodi.minions.client.gui.MastersStaffScreen;
 import io.github.jodlodi.minions.network.ContainerBlockPacket;
 import io.github.jodlodi.minions.network.ContainerEntityPacket;
-import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.network.chat.Component;
@@ -12,6 +11,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -26,15 +26,15 @@ public class ContainerButton extends AbstractMastersButton {
     @Override
     public void onPress() {
         if (this.getScreen().getContext() instanceof BlockHitResult blockHitResult) {
-            PacketDistributor.sendToServer(new ContainerBlockPacket(blockHitResult.getBlockPos()));
+            PacketDistributor.sendToServer(new ContainerBlockPacket(blockHitResult.getBlockPos(), this.screen.isShiftKeyDown()));
         } else if (this.getScreen().getContext() instanceof EntityHitResult entityHitResult) {
-            PacketDistributor.sendToServer(new ContainerEntityPacket(entityHitResult.getEntity().getUUID()));
+            PacketDistributor.sendToServer(new ContainerEntityPacket(entityHitResult.getEntity().getUUID(), this.screen.isShiftKeyDown()));
         }
         this.screen.onClose();
     }
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Set Container").withStyle(ChatFormatting.BLUE);
+        return Component.translatable(this.screen.isShiftKeyDown() ? "gui.minions_remastered.storage_keep" : "gui.minions_remastered.storage_deliver").withStyle(ChatFormatting.BLUE);
     }
 }

@@ -96,13 +96,14 @@ public class HoeWartButton extends AbstractAdjustableOrderButton {
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Harvest wart").withStyle(ChatFormatting.BLUE);
+        return Component.translatable("gui.minions_remastered.harvest_wart").withStyle(ChatFormatting.BLUE);
     }
 
     @Override
     protected List<MutableComponent> getAdjustableTooltip() {
         return List.of(
-                Component.literal("Range: " + this.range).withStyle(ChatFormatting.GRAY),
-                Component.literal(this.allWart ? "Harvest all wart" : "Only harvest " + this.getScreen().target.getBlock().getName().getString()).withStyle(ChatFormatting.GRAY));
+                Component.translatable("gui.minions_remastered.range", this.range).withStyle(ChatFormatting.GRAY),
+                (this.allWart ? Component.translatable("gui.minions_remastered.harvest_all_wart")
+                        : Component.translatable("gui.minions_remastered.harvest_only", this.getScreen().target.getBlock().getName())).withStyle(ChatFormatting.GRAY));
     }
 }

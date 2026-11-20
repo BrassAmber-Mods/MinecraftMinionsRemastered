@@ -1,4 +1,4 @@
-Original Minions deed and offering audio
+Original Minions deed, offering, worker voice, and lightning audio
 
 These audio assets come from AtomicStryker's Minions mod, on the 1.12.2 branch:
 https://github.com/AtomicStryker/atomicstrykers-minecraft-mods/tree/1.12.2/Minions/src/main/resources/assets/minions/sounds

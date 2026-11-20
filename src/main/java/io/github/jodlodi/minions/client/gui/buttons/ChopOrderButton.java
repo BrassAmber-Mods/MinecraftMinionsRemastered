@@ -96,14 +96,15 @@ public class ChopOrderButton extends AbstractAdjustableOrderButton {
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Harvest wood").withStyle(ChatFormatting.BLUE);
+        return Component.translatable("gui.minions_remastered.harvest_wood").withStyle(ChatFormatting.BLUE);
     }
 
     @Override
     protected List<MutableComponent> getAdjustableTooltip() {
         return List.of(
-                Component.literal("Range: " + this.range).withStyle(ChatFormatting.GRAY),
-                Component.literal(this.allLogs ? "Harvest all logs" : "Only harvest " + this.getScreen().target.getBlock().getName().getString()).withStyle(ChatFormatting.GRAY));
+                Component.translatable("gui.minions_remastered.range", this.range).withStyle(ChatFormatting.GRAY),
+                (this.allLogs ? Component.translatable("gui.minions_remastered.harvest_all_logs")
+                        : Component.translatable("gui.minions_remastered.harvest_only", this.getScreen().target.getBlock().getName())).withStyle(ChatFormatting.GRAY));
 
     }
 }

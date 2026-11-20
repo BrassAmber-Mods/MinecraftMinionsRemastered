@@ -36,6 +36,6 @@ public class CarryLivingOrderButton extends AbstractMastersButton {
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Pick Up ").withStyle(ChatFormatting.BLUE).append(this.getScreen().target.getType().getDescription());
+        return Component.translatable("gui.minions_remastered.pick_up", this.getScreen().target.getType().getDescription()).withStyle(ChatFormatting.BLUE);
     }
 }

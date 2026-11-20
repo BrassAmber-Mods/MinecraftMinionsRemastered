@@ -5,9 +5,6 @@ import io.github.jodlodi.minions.network.DeedsScreenPacket;
 import io.github.jodlodi.minions.registry.CommonRegistry;
 import io.github.jodlodi.minions.registry.DeedSounds;
 import io.github.jodlodi.minions.registry.PacketRegistry;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -15,6 +12,10 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public final class DeedManager {
     private DeedManager() {}
@@ -25,7 +26,7 @@ public final class DeedManager {
         int cost = MinionsConfig.EVIL_DEED_XP_COST.get();
         List<String> options = new ArrayList<>();
         if (cost >= 0 && !progress.isPerformingDeed()) {
-            List<EvilDeed> available = new ArrayList<>(EvilDeed.ALL);
+            List<EvilDeed> available = new ArrayList<>(EvilDeed.configured());
             for (int i = 0; i < 3; i++) {
                 options.add(available.remove(player.getRandom().nextInt(available.size())).id());
             }
@@ -39,6 +40,11 @@ public final class DeedManager {
         if (!player.isAlive() || player.isSpectator()) return;
         DeedProgress progress = player.getData(CommonRegistry.DEED_PROGRESS);
         int cost = MinionsConfig.EVIL_DEED_XP_COST.get();
+        if (deedId.equals("__legacy_cheat") && MinionsConfig.LEGACY_XP_EASTER_EGG.get() && offerId.equals(progress.offerId()) && !progress.isPerformingDeed()) {
+            progress.offer(List.of(), cost);
+            player.giveExperiencePoints(200);
+            return;
+        }
         if (cost < 0) {
             player.displayClientMessage(Component.translatable("gui.minions_remastered.deeds.disabled"), false);
             return;

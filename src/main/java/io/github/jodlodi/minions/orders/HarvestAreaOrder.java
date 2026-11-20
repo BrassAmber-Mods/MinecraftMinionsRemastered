@@ -11,12 +11,13 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+
 import java.util.function.Predicate;
 
 public abstract class HarvestAreaOrder extends AbstractWorkOrder {
-    private final BlockPos minPos;
-    private final BlockPos maxPos;
-    private final Block predicate;
+    protected final BlockPos minPos;
+    protected final BlockPos maxPos;
+    protected final Block predicate;
     private int cursor;
 
     protected HarvestAreaOrder(BlockPos min, BlockPos max, Block predicate) {
@@ -44,6 +45,9 @@ public abstract class HarvestAreaOrder extends AbstractWorkOrder {
     }
 
     protected abstract boolean matches(BlockState state);
+    protected boolean advanceDiscovery(ServerPlayer owner, ServerLevel level) { return true; }
+    protected boolean scanMatch(ServerPlayer owner, ServerLevel level, BlockPos pos) { return this.scanBlock(owner, level, pos, null); }
+    protected CompoundTag saveHarvest(CompoundTag tag) { return tag; }
     public final Predicate<BlockState> getPredicate() {
         return state -> this.matches(state) && (this.predicate == null || state.is(this.predicate));
     }
@@ -55,7 +59,7 @@ public abstract class HarvestAreaOrder extends AbstractWorkOrder {
         tag.putLong("max", this.maxPos.asLong());
         tag.putInt("cursor", this.cursor);
         if (this.predicate != null) tag.putString("predicate", BuiltInRegistries.BLOCK.getKey(this.predicate).toString());
-        return this.saveWork(tag);
+        return this.saveWork(this.saveHarvest(tag));
     }
 
     private static int centered(int index, int size) {
@@ -64,6 +68,7 @@ public abstract class HarvestAreaOrder extends AbstractWorkOrder {
 
     @Override
     protected final boolean scanNext(ServerPlayer owner, ServerLevel level) {
+        if (!this.advanceDiscovery(owner, level)) return false;
         int width = this.maxPos.getX() - this.minPos.getX() + 1;
         int depth = this.maxPos.getZ() - this.minPos.getZ() + 1;
         int height = this.maxPos.getY() - this.minPos.getY() + 1;
@@ -71,7 +76,7 @@ public abstract class HarvestAreaOrder extends AbstractWorkOrder {
         BlockPos pos = this.minPos.offset(centered(this.cursor % width, width), centered(this.cursor / (width * depth), height), centered((this.cursor / width) % depth, depth));
         if (level.isInWorldBounds(pos)) {
             if (!this.loaded(owner, level, pos)) return false;
-            if (this.getPredicate().test(level.getBlockState(pos)) && !this.scanBlock(owner, level, pos, null)) return false;
+            if (this.getPredicate().test(level.getBlockState(pos)) && !this.scanMatch(owner, level, pos)) return false;
         }
         this.cursor++;
         return true;

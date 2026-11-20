@@ -4,6 +4,7 @@ import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.goals.EnactOrderGoal;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
@@ -27,7 +28,7 @@ public abstract class AbstractOrder {
 
     abstract public void tick(IMasterCapability masterCapability, Player player, Level level);
 
-    public void interrupt(net.minecraft.server.level.ServerLevel level) {}
+    public void interrupt(ServerLevel level) {}
 
     public CompoundTag serializeForClient() { return this.serialize(); }
 

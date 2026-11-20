@@ -1,5 +1,6 @@
 package io.github.jodlodi.minions.capabilities;
 
+import io.github.jodlodi.minions.MinionsConfig;
 import io.github.jodlodi.minions.MinionsRemastered;
 import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.network.MasterPacket;
@@ -7,10 +8,6 @@ import io.github.jodlodi.minions.orders.AbstractOrder;
 import io.github.jodlodi.minions.registry.OrderRegistry;
 import io.github.jodlodi.minions.registry.PacketRegistry;
 import io.github.jodlodi.minions.work.WorkerChunks;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -23,8 +20,14 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+
 public class MasterCapabilityHandler implements IMasterCapability {
-    public static final int MAX_MINIONS = 4;
+    public static final int MAX_MINIONS = 16;
     private final List<UUID> minions = new ArrayList<>();
     private final List<CompoundTag> inventories = new ArrayList<>();
     private Player player;
@@ -88,7 +91,7 @@ public class MasterCapabilityHandler implements IMasterCapability {
     @Override
     public boolean isMinion(UUID uuid) { return uuid != null && this.minions.contains(uuid); }
     @Override
-    public int minionCount() { return (int)this.minions.stream().filter(java.util.Objects::nonNull).count(); }
+    public int minionCount() { return (int)this.minions.stream().filter(Objects::nonNull).count(); }
 
     @Override
     public void addMinion(UUID uuid) {
@@ -98,7 +101,7 @@ public class MasterCapabilityHandler implements IMasterCapability {
 
     @Override
     public void addSpecificMinion(UUID uuid, int id) {
-        if (id < 0 || id >= MAX_MINIONS || uuid == null || this.minions.get(id) != null || this.isMinion(uuid)) return;
+        if (id < 0 || id >= MinionsConfig.MINIONS_PER_PLAYER.get() || uuid == null || this.minions.get(id) != null || this.isMinion(uuid)) return;
         this.minions.set(id, uuid);
         if (!this.player.level().isClientSide) this.sendUpdatePacket();
     }

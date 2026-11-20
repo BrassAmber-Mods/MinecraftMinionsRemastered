@@ -100,13 +100,13 @@ public class MineOrderButton extends AbstractAdjustableOrderButton {
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Mine Mineshaft").withStyle(ChatFormatting.BLUE);
+        return Component.translatable("gui.minions_remastered.tunnel").withStyle(ChatFormatting.BLUE);
     }
 
     @Override
     protected List<MutableComponent> getAdjustableTooltip() {
         return List.of(
-                Component.literal("Depth: " + this.depth).withStyle(ChatFormatting.GRAY),
-                Component.literal(this.scale == 0 ? "Small mine" : this.scale == 1 ? "Medium mine" : "Large mine").withStyle(ChatFormatting.GRAY));
+                Component.translatable("gui.minions_remastered.depth", this.depth).withStyle(ChatFormatting.GRAY),
+                Component.translatable(this.scale == 0 ? "gui.minions_remastered.mine.small" : this.scale == 1 ? "gui.minions_remastered.mine.medium" : "gui.minions_remastered.mine.large").withStyle(ChatFormatting.GRAY));
     }
 }

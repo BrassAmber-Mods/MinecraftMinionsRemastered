@@ -10,10 +10,11 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 
 public final class CommandValidation {
@@ -38,9 +39,8 @@ public final class CommandValidation {
     }
 
     public static boolean friendly(ServerPlayer player, Entity target) {
-        return !(target instanceof Enemy) && (!(target instanceof net.minecraft.world.entity.NeutralMob neutral) || !neutral.isAngryAt(player))
-                && (!(target instanceof OwnableEntity ownable) || ownable.getOwnerUUID() == null || player.getUUID().equals(ownable.getOwnerUUID()))
-                && (!(target instanceof net.minecraft.world.entity.player.Player) || target == player);
+        return !(target instanceof Enemy) && (!(target instanceof NeutralMob neutral) || !neutral.isAngryAt(player))
+                && (!(target instanceof OwnableEntity ownable) || ownable.getOwnerUUID() == null || player.getUUID().equals(ownable.getOwnerUUID()));
     }
 
     private static boolean bounds(ServerPlayer player, BlockPos min, BlockPos max, int maxWidth, int maxHeight) {
@@ -58,7 +58,8 @@ public final class CommandValidation {
     }
 
     public static boolean shaft(ServerPlayer player, BlockPos min, BlockPos max, int startDir, int stairs) {
-        return bounds(player, min, max, 32, 1) && max.getX() - min.getX() == max.getZ() - min.getZ()
+        return bounds(player, min, max, 31, 1) && GameplayRules.isHoleWidth((long)max.getX() - min.getX() + 1, 31)
+                && max.getX() - min.getX() == max.getZ() - min.getZ()
                 && startDir >= 0 && startDir < 4 && stairs >= 0 && stairs <= 2;
     }
 
@@ -72,6 +73,7 @@ public final class CommandValidation {
     }
 
     public static boolean harvest(ServerPlayer player, BlockPos min, BlockPos max, Block predicate, TagKey<Block> tag) {
-        return bounds(player, min, max, 32, 65) && (predicate == null || predicate.defaultBlockState().is(tag));
+        return bounds(player, min, max, 32, 65) && (predicate == null || predicate.defaultBlockState().is(tag)
+                || tag.equals(BlockTags.LOGS) && GameplayRules.isTree(predicate.defaultBlockState()));
     }
 }

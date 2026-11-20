@@ -259,5 +259,81 @@
         "stream": true
       }
     ]
+  },
+  "worker.bolt": {
+    "subtitle": "subtitles.minions_remastered.bolt",
+    "sounds": [
+      "minions_remastered:workers/bolt1",
+      "minions_remastered:workers/bolt2",
+      "minions_remastered:workers/bolt3",
+      "minions_remastered:workers/bolt4"
+    ]
+  },
+  "worker.fart": {
+    "subtitle": "subtitles.minions_remastered.fart",
+    "sounds": [
+      "minions_remastered:workers/fart1",
+      "minions_remastered:workers/fart2"
+    ]
+  },
+  "worker.foryou": {
+    "subtitle": "subtitles.minions_remastered.foryou",
+    "sounds": [
+      "minions_remastered:workers/foryou1",
+      "minions_remastered:workers/foryou2",
+      "minions_remastered:workers/foryou3",
+      "minions_remastered:workers/foryou4"
+    ]
+  },
+  "worker.grabanimalorder": {
+    "subtitle": "subtitles.minions_remastered.grabanimalorder",
+    "sounds": [
+      "minions_remastered:workers/grabanimalorder"
+    ]
+  },
+  "worker.minionspawn": {
+    "subtitle": "subtitles.minions_remastered.minionspawn",
+    "sounds": [
+      "minions_remastered:workers/minionspawn"
+    ]
+  },
+  "worker.minionsqueak": {
+    "subtitle": "subtitles.minions_remastered.minionsqueak",
+    "sounds": [
+      "minions_remastered:workers/minionsqueak"
+    ]
+  },
+  "worker.orderfollowplayer": {
+    "subtitle": "subtitles.minions_remastered.orderfollowplayer",
+    "sounds": [
+      "minions_remastered:workers/orderfollowplayer"
+    ]
+  },
+  "worker.ordermineshaft": {
+    "subtitle": "subtitles.minions_remastered.ordermineshaft",
+    "sounds": [
+      "minions_remastered:workers/ordermineshaft1",
+      "minions_remastered:workers/ordermineshaft2",
+      "minions_remastered:workers/ordermineshaft3"
+    ]
+  },
+  "worker.ordertreecutting": {
+    "subtitle": "subtitles.minions_remastered.ordertreecutting",
+    "sounds": [
+      "minions_remastered:workers/ordertreecutting1",
+      "minions_remastered:workers/ordertreecutting2",
+      "minions_remastered:workers/ordertreecutting3",
+      "minions_remastered:workers/ordertreecutting4"
+    ]
+  },
+  "worker.randomorder": {
+    "subtitle": "subtitles.minions_remastered.randomorder",
+    "sounds": [
+      "minions_remastered:workers/randomorder1",
+      "minions_remastered:workers/randomorder2",
+      "minions_remastered:workers/randomorder3",
+      "minions_remastered:workers/randomorder4",
+      "minions_remastered:workers/randomorder5"
+    ]
   }
 }

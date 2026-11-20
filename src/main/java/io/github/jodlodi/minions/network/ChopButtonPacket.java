@@ -1,19 +1,22 @@
 package io.github.jodlodi.minions.network;
 
-import io.github.jodlodi.minions.capabilities.IMasterCapability;
-import io.github.jodlodi.minions.work.CommandValidation;
-import io.github.jodlodi.minions.orders.ChopOrder;
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.network.codec.StreamCodec;
 import io.github.jodlodi.minions.MinionsRemastered;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.block.Block;
+import io.github.jodlodi.minions.capabilities.IMasterCapability;
+import io.github.jodlodi.minions.orders.ChopOrder;
+import io.github.jodlodi.minions.work.CommandValidation;
+import io.github.jodlodi.minions.work.GameplayRules;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.Block;
 
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
+
 import java.util.Objects;
 
 @ParametersAreNonnullByDefault
@@ -58,8 +61,8 @@ public class ChopButtonPacket extends AbstractServerboundPacket {
 
 	@Override
 	void execute(ServerPlayer player, IMasterCapability capability) {
-        if (!CommandValidation.harvest(player, this.minPos, this.maxPos, this.predicate, net.minecraft.tags.BlockTags.LOGS)) return;
-		capability.setOrder(new ChopOrder(this.minPos, this.maxPos, this.predicate));
+        if (!CommandValidation.harvest(player, this.minPos, this.maxPos, this.predicate, BlockTags.LOGS)) return;
+		if (!GameplayRules.start(player, capability, new ChopOrder(this.minPos, this.maxPos, this.predicate))) return;
 		capability.setPaused(this.paused);
 	}
 }

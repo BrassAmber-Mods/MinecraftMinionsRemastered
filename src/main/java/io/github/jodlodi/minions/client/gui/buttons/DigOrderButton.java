@@ -6,11 +6,9 @@ import io.github.jodlodi.minions.network.MineDownButtonPacket;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.MethodsReturnNonnullByDefault;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -43,17 +41,10 @@ public class DigOrderButton extends AbstractAdjustableOrderButton {
     public void onPress() {
         MastersStaffScreen.BlockStaffScreen screen = this.getScreen();
         LocalPlayer player = screen.getPlayer();
-        float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
-
         int offset = this.size / 2;
-        int trueSet = (this.size + 1) % 2;
-
-        boolean south =  Direction.SOUTH.isFacingAngle(player.getViewYRot(partialTick));
-        boolean east =  Direction.EAST.isFacingAngle(player.getViewYRot(partialTick));
-
         BlockPos context = screen.getContext().getBlockPos();
-        BlockPos minPos = context.north(offset - (south ? trueSet : 0)).west(offset - (east ? trueSet : 0));
-        BlockPos maxPos = context.south(offset - (!south ? trueSet : 0)).east(offset - (!east ? trueSet : 0));
+        BlockPos minPos = context.offset(-offset, 0, -offset);
+        BlockPos maxPos = context.offset(offset, 0, offset);
 
         Vec3 pos = player.position();
 
@@ -87,16 +78,10 @@ public class DigOrderButton extends AbstractAdjustableOrderButton {
         super.onSelectedTick();
         MastersStaffScreen.BlockStaffScreen screen = this.getScreen();
         LocalPlayer player = screen.getPlayer();
-        float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
         ClientLevel level = player.clientLevel;
         int offset = this.size / 2;
-        int trueSet = (this.size + 1) % 2;
-
-        boolean south =  Direction.SOUTH.isFacingAngle(player.getViewYRot(partialTick));
-        boolean east =  Direction.EAST.isFacingAngle(player.getViewYRot(partialTick));
-
-        BlockPos minPos = screen.getContext().getBlockPos().north(offset - (south ? trueSet : 0)).west(offset - (east ? trueSet : 0));
-        BlockPos maxPos = screen.getContext().getBlockPos().south(offset - (!south ? trueSet : 0)).east(offset - (!east ? trueSet : 0));
+        BlockPos minPos = screen.getContext().getBlockPos().offset(-offset, 0, -offset);
+        BlockPos maxPos = screen.getContext().getBlockPos().offset(offset, 0, offset);
 
         for (BlockPos pos : BlockPos.betweenClosed(minPos, maxPos)) {
             if (player.getRandom().nextInt(12) == 0) {
@@ -113,7 +98,7 @@ public class DigOrderButton extends AbstractAdjustableOrderButton {
 
     @Override
     protected void onLeftPress() {
-        this.size = Math.max(1, this.size - (this.screen.isShiftKeyDown() ? 5 : 1));
+        this.size = Math.max(3, this.size - (this.screen.isShiftKeyDown() ? 10 : 2));
     }
 
     @Override
@@ -123,18 +108,19 @@ public class DigOrderButton extends AbstractAdjustableOrderButton {
 
     @Override
     protected void onRightPress() {
-        this.size = Math.min(32, this.size + (this.screen.isShiftKeyDown() ? 5 : 1));
+        this.size = Math.min(31, this.size + (this.screen.isShiftKeyDown() ? 10 : 2));
     }
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Dig Mineshaft").withStyle(ChatFormatting.BLUE);
+        return Component.translatable("gui.minions_remastered.shaft").withStyle(ChatFormatting.BLUE);
     }
 
     @Override
     protected List<MutableComponent> getAdjustableTooltip() {
         return List.of(
-                Component.literal("Size: " + this.size).withStyle(ChatFormatting.GRAY),
-                Component.literal(this.stairs > 0 ? this.stairs == 1 ? "With stairs" : "Counter stairs" : "Without stairs").withStyle(ChatFormatting.GRAY));
+                Component.translatable("gui.minions_remastered.size", this.size).withStyle(ChatFormatting.GRAY),
+                Component.translatable(this.stairs > 0 ? this.stairs == 1 ? "gui.minions_remastered.stairs.clockwise" : "gui.minions_remastered.stairs.counterclockwise"
+                        : "gui.minions_remastered.stairs.none").withStyle(ChatFormatting.GRAY));
     }
 }

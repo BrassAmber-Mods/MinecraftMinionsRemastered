@@ -1,13 +1,34 @@
 package io.github.jodlodi.minions.orders;
 
-import io.github.jodlodi.minions.MinionsConfig;
 import io.github.jodlodi.minions.MinUtil;
+import io.github.jodlodi.minions.MinionsConfig;
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.minion.Minion;
 import io.github.jodlodi.minions.minion.goals.EnactOrderGoal;
+import io.github.jodlodi.minions.work.GameplayRules;
 import io.github.jodlodi.minions.work.WorkTarget;
 import io.github.jodlodi.minions.work.WorkerActions;
 import io.github.jodlodi.minions.work.WorkerChunks;
+import io.github.jodlodi.minions.work.WorkerMovement;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.FallingBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,24 +36,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.FallingBlock;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.level.ClipContext;
 
 /** One scheduler per player's order: bounded scans, unique block leases, and retryable saved targets. */
 public abstract class AbstractWorkOrder extends AbstractOrder {
@@ -41,16 +44,20 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
     private final Map<UUID, Claim> claims = new HashMap<>();
     private final Set<Long> seenVeins = new HashSet<>();
     private final Set<Long> blockedSafety = new HashSet<>();
-    private record VeinSearch(BlockPos pos, BlockPos origin) {}
+    private record VeinSearch(BlockPos pos, BlockPos origin, Block material) {}
     private final LinkedHashMap<Long, VeinSearch> veinSearches = new LinkedHashMap<>();
     private boolean sourceFinished;
     private int skipped;
+    private boolean finished;
 
     private static final class Claim {
         final WorkTarget target;
         float progress;
         long lastTouched;
         int stalled;
+        int stationaryTicks;
+        Vec3 lastPosition;
+        Vec3 approach;
         double bestDistance = Double.MAX_VALUE;
         Claim(WorkTarget target, long now) { this.target = target; this.lastTouched = now; }
     }
@@ -74,7 +81,9 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
         for (int i = 0; i < Math.min(searches.size(), 512); i++) {
             CompoundTag search = searches.getCompound(i);
             BlockPos pos = BlockPos.of(search.getLong("Pos"));
-            this.veinSearches.put(pos.asLong(), new VeinSearch(pos, search.contains("Origin") ? BlockPos.of(search.getLong("Origin")) : null));
+            ResourceLocation material = ResourceLocation.tryParse(search.getString("Material"));
+            this.veinSearches.put(pos.asLong(), new VeinSearch(pos, search.contains("Origin") ? BlockPos.of(search.getLong("Origin")) : null,
+                    material != null ? BuiltInRegistries.BLOCK.get(material) : null));
         }
     }
 
@@ -93,6 +102,7 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
             CompoundTag entry = new CompoundTag();
             entry.putLong("Pos", search.pos().asLong());
             if (search.origin() != null) entry.putLong("Origin", search.origin().asLong());
+            if (search.material() != null) entry.putString("Material", BuiltInRegistries.BLOCK.getKey(search.material()).toString());
             searches.add(entry);
         }
         work.put("VeinSearches", searches);
@@ -110,6 +120,14 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
     protected abstract boolean scanNext(ServerPlayer owner, ServerLevel level);
     protected abstract void preview(Player player, Level level);
     protected boolean followsVeins() { return false; }
+    protected boolean checkSafety() { return this.followsVeins(); }
+    protected boolean expandVeins() { return this.followsVeins() && MinionsConfig.MINE_ORE_VEINS.get(); }
+    protected boolean isVeinBlock(BlockState state) { return GameplayRules.isValuable(state); }
+    protected float workSpeed(Minion worker, WorkTarget target, float speed) { return speed; }
+    protected boolean harvest(Minion worker, WorkTarget target) { return WorkerActions.harvest(worker, target.pos); }
+    protected boolean readyToHarvest(Minion worker, WorkTarget target) { return true; }
+    protected void targetDone(WorkTarget target) {}
+    public final boolean isFinished() { return this.finished; }
     protected void afterBreak(Minion worker, BlockPos pos) {}
     protected final boolean drained() { return this.pending.isEmpty() && this.claims.isEmpty() && this.veinSearches.isEmpty(); }
     protected final void finishSource() { this.sourceFinished = true; }
@@ -131,11 +149,11 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
             return true;
         }
         if (!state.isAir() || replacement != null) this.enqueue(new WorkTarget(pos, state, replacement, null));
-        if (this.followsVeins() && state.isAir() && replacement == null) this.discoverOres(owner, level, pos, null);
+        if (this.followsVeins() && state.isAir() && replacement == null) this.discoverOres(owner, level, pos, null, null);
         return true;
     }
 
-    private void enqueue(WorkTarget target) {
+    protected final void enqueue(WorkTarget target) {
         WorkTarget existing = this.pending.get(target.pos.asLong());
         if (existing == null) for (Claim claim : this.claims.values()) {
             if (claim.target.pos.equals(target.pos)) { existing = claim.target; break; }
@@ -148,11 +166,11 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
         }
     }
 
-    private void discoverOres(ServerPlayer owner, ServerLevel level, BlockPos pos, BlockPos origin) {
-        if (!this.followsVeins() || !MinionsConfig.MINE_ORE_VEINS.get() || this.seenVeins.size() >= MinionsConfig.MAX_VEIN_BLOCKS.get()) return;
+    private void discoverOres(ServerPlayer owner, ServerLevel level, BlockPos pos, BlockPos origin, Block material) {
+        if (!this.expandVeins() || this.seenVeins.size() >= MinionsConfig.MAX_VEIN_BLOCKS.get()) return;
         // Reserve room for all six neighbors; defer expansion instead of losing branches when busy.
         if (this.pending.size() + this.claims.size() > MAX_PENDING - 6) {
-            this.deferVein(pos, origin);
+            this.deferVein(pos, origin, material);
             return;
         }
         for (Direction direction : Direction.values()) {
@@ -162,39 +180,47 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
             if (adjacent.distManhattan(root) > MinionsConfig.VEIN_RADIUS.get() || !level.isInWorldBounds(adjacent)
                     || !level.getWorldBorder().isWithinBounds(adjacent)) continue;
             WorkerChunks.keepLoaded(owner, level, adjacent);
-            if (!level.hasChunkAt(adjacent)) { this.deferVein(pos, origin); continue; }
-            if (WorkerActions.isOre(level.getBlockState(adjacent)) && this.seenVeins.add(adjacent.asLong())) {
+            if (!level.hasChunkAt(adjacent)) { this.deferVein(pos, origin, material); continue; }
+            if (this.isVeinBlock(level.getBlockState(adjacent)) && (material == null || level.getBlockState(adjacent).is(material)) && this.seenVeins.add(adjacent.asLong())) {
                 this.enqueue(new WorkTarget(adjacent, level.getBlockState(adjacent), null, root));
             }
         }
     }
 
-    private void deferVein(BlockPos pos, BlockPos origin) {
-        if (this.veinSearches.size() < 512) this.veinSearches.putIfAbsent(pos.asLong(), new VeinSearch(pos.immutable(), origin));
+    private void deferVein(BlockPos pos, BlockPos origin, Block material) {
+        if (this.veinSearches.size() < 512) this.veinSearches.putIfAbsent(pos.asLong(), new VeinSearch(pos.immutable(), origin, material));
     }
 
     @Override
     public final void tick(IMasterCapability master, Player player, Level level) {
+        this.tickWithBudget(master, player, level, MinionsConfig.WORK_SCAN_BUDGET.get());
+    }
+
+    public final void tickWithBudget(IMasterCapability master, Player player, Level level, int scanBudget) {
+        if (this.finished) return;
         if (!master.isOrderIn(level)) return;
         if (level.isClientSide) { this.preview(player, level); return; }
         if (!(player instanceof ServerPlayer owner) || !owner.isAlive()) return;
         ServerLevel server = owner.serverLevel();
         this.expireClaims(master, server);
         if (master.isPaused()) { this.releaseAll(server); return; }
-        int budget = MinionsConfig.WORK_SCAN_BUDGET.get();
+        int budget = Math.max(1, scanBudget);
         int searches = Math.min(budget, this.veinSearches.size());
         while (searches-- > 0 && this.pending.size() + this.claims.size() <= MAX_PENDING - 6) {
             VeinSearch search = this.veinSearches.values().iterator().next();
             this.veinSearches.remove(search.pos().asLong());
-            this.discoverOres(owner, server, search.pos(), search.origin());
+            this.discoverOres(owner, server, search.pos(), search.origin(), search.material());
             budget--;
         }
         while (budget-- > 0 && this.veinSearches.isEmpty() && !this.sourceFinished && this.pending.size() + this.claims.size() < MAX_PENDING) {
             if (!this.scanNext(owner, server)) break;
         }
         if (this.sourceFinished && this.drained()) {
-            for (UUID id : master.getMinions()) if (id != null && server.getEntity(id) instanceof Minion worker) worker.requestDelivery();
-            master.setOrder(null);
+            this.finished = true;
+            if (master.getOrder() == this) {
+                for (UUID id : master.getMinions()) if (id != null && server.getEntity(id) instanceof Minion worker) worker.requestDelivery();
+                master.setOrder(null);
+            }
             if (this.skipped > 0) owner.displayClientMessage(Component.translatable("message.minions_remastered.work.skipped", this.skipped), false);
         }
     }
@@ -219,13 +245,13 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
         if (claim == null) return;
         if (level.getEntity(id) instanceof Minion worker) level.destroyBlockProgress(worker.getId(), claim.target.pos, -1);
         if (failed && ++claim.target.attempts >= 3) { this.markSkipped(claim.target); return; }
-        if (failed) claim.target.retryAt = level.getGameTime() + 100;
+        if (failed) claim.target.retryAt = level.getGameTime() + 20;
         this.pending.put(claim.target.pos.asLong(), claim.target);
     }
 
     @Override
     public boolean goalCanUse(EnactOrderGoal goal) {
-        return goal.getOwner() instanceof ServerPlayer owner && owner.isAlive() && owner.level() == goal.getMinion().level()
+        return !this.finished && goal.getOwner() instanceof ServerPlayer owner && owner.isAlive() && owner.level() == goal.getMinion().level()
                 && goal.getMasterCapability().isOrderIn(goal.getMinion().level()) && !goal.getMinion().needsDelivery();
     }
 
@@ -244,6 +270,7 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
         if (current != null) return current;
         WorkTarget best = null;
         double distance = Double.MAX_VALUE;
+        boolean bestReachable = false;
         for (WorkTarget target : this.pending.values()) {
             if (target.retryAt > level.getGameTime()) continue;
             if (!level.hasChunkAt(target.pos)) {
@@ -251,8 +278,10 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
                 continue;
             }
             double candidate = worker.distanceToSqr(Vec3.atCenterOf(target.pos));
-            if (best == null || target.priority > best.priority || (target.priority == best.priority && candidate < distance)) {
-                best = target; distance = candidate;
+            boolean reachable = WorkerMovement.canReach(worker, target.pos);
+            if (best == null || reachable && !bestReachable || reachable == bestReachable
+                    && (target.priority > best.priority || target.priority == best.priority && candidate < distance)) {
+                best = target; distance = candidate; bestReachable = reachable;
             }
         }
         if (best == null) return null;
@@ -279,8 +308,7 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
         Vec3 center = Vec3.atCenterOf(target.pos);
         double distance = worker.getEyePosition().distanceToSqr(center);
         worker.getLookControl().setLookAt(center);
-        BlockHitResult sight = level.clip(new ClipContext(worker.getEyePosition(), center, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, worker));
-        boolean reachable = distance <= 12.25D && (sight.getType() == HitResult.Type.MISS || sight.getBlockPos().equals(target.pos));
+        boolean reachable = WorkerMovement.canReach(worker, target.pos);
         if (!reachable) {
             claim.progress = 0;
             level.destroyBlockProgress(worker.getId(), target.pos, -1);
@@ -290,22 +318,33 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
                 this.release(worker.getUUID(), level, true);
                 return;
             }
+            if (claim.lastPosition == null || worker.position().distanceToSqr(claim.lastPosition) > 0.01D) {
+                claim.lastPosition = worker.position(); claim.stationaryTicks = 0;
+            } else claim.stationaryTicks++;
             if (worker.tickCount % 10 == 0) {
-                BlockPos approach = MinUtil.randomOpenNearbyOrAboveOrBelow(target.pos, level);
-                Vec3 destination = approach != null ? Vec3.atBottomCenterOf(approach) : center;
+                if (claim.approach == null || !WorkerMovement.canWorkFrom(worker, claim.approach, target.pos))
+                    claim.approach = WorkerMovement.findWorkPosition(worker, target.pos);
+                Vec3 destination = claim.approach != null ? claim.approach : center;
                 goal.getNavigation().moveTo(destination.x, destination.y, destination.z, goal.getSpeedModifier());
+                if (claim.approach != null && claim.stationaryTicks >= 20 && worker.canBlink()) {
+                    worker.blink(claim.approach);
+                    goal.getNavigation().stop();
+                    claim.stalled = 0; claim.stationaryTicks = 0; claim.bestDistance = Double.MAX_VALUE;
+                }
             }
             return;
         }
         goal.getNavigation().stop();
+        claim.stationaryTicks = 0;
         if (worker.getBlinking()) return;
+        if (!this.readyToHarvest(worker, target)) return;
         if (state.canBeReplaced() && target.replacement != null) {
             if (!WorkerActions.place(worker, target.pos, target.replacement)) this.skipped++;
             this.complete(worker, level, claim);
             return;
         }
         if (!WorkerActions.canHarvest(worker, target.pos)) { this.markSkipped(target); this.complete(worker, level, claim); return; }
-        if (this.followsVeins()) {
+        if (this.checkSafety()) {
             if (worker.getOwner() instanceof ServerPlayer owner) {
                 for (Direction direction : Direction.values()) {
                     BlockPos neighbor = target.pos.relative(direction);
@@ -335,15 +374,16 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
         float speed;
         try { speed = state.getDestroyProgress(actor, level, target.pos) * worker.getMineSpeed() / 3.75F; }
         finally { actor.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY); }
+        speed = this.workSpeed(worker, target, speed);
         claim.progress += Math.max(0, speed);
         worker.swing(InteractionHand.MAIN_HAND);
         if (claim.progress >= 1.0F) {
-            boolean ore = WorkerActions.isOre(state);
-            if (WorkerActions.harvest(worker, target.pos)) {
+            boolean ore = this.isVeinBlock(state);
+            if (this.harvest(worker, target)) {
                 if (target.replacement != null && !WorkerActions.place(worker, target.pos, target.replacement)) this.skipped++;
                 this.afterBreak(worker, target.pos);
                 if (worker.getOwner() instanceof ServerPlayer owner) this.discoverOres(owner, level, target.pos,
-                        target.veinOrigin != null ? target.veinOrigin : ore ? target.pos : null);
+                        target.veinOrigin != null ? target.veinOrigin : ore ? target.pos : null, ore ? state.getBlock() : null);
             } else this.markSkipped(target);
             this.complete(worker, level, claim);
         } else {
@@ -355,10 +395,12 @@ public abstract class AbstractWorkOrder extends AbstractOrder {
     private void complete(Minion worker, ServerLevel level, Claim claim) {
         level.destroyBlockProgress(worker.getId(), claim.target.pos, -1);
         this.claims.remove(worker.getUUID());
+        this.targetDone(claim.target);
     }
 
     private void markSkipped(WorkTarget target) {
         this.skipped++;
         if (target.priority > 0 && this.blockedSafety.size() < 512) this.blockedSafety.add(target.pos.asLong());
+        this.targetDone(target);
     }
 }

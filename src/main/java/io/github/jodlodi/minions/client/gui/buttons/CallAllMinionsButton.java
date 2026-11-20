@@ -2,9 +2,8 @@ package io.github.jodlodi.minions.client.gui.buttons;
 
 import io.github.jodlodi.minions.capabilities.IMasterCapability;
 import io.github.jodlodi.minions.client.gui.MastersStaffScreen;
-import io.github.jodlodi.minions.network.BanishPacket;
-import io.github.jodlodi.minions.network.SummonPacket;
-import net.neoforged.neoforge.network.PacketDistributor;
+import io.github.jodlodi.minions.network.StaffActionPacket;
+import io.github.jodlodi.minions.work.StaffActions;
 import net.minecraft.ChatFormatting;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
@@ -12,9 +11,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.UUID;
 
 @OnlyIn(Dist.CLIENT)
 @MethodsReturnNonnullByDefault
@@ -30,13 +29,7 @@ public class CallAllMinionsButton extends AbstractMastersButton {
     @Override
     public void onPress() {
         BlockPos pos = this.getScreen().getContext().getBlockPos();
-        for (UUID uuid : this.capability.getMinions()) {
-            if (uuid != null) {
-                int index = this.capability.getMinions().indexOf(uuid);
-                PacketDistributor.sendToServer(new BanishPacket(uuid));
-                PacketDistributor.sendToServer(new SummonPacket(pos, index));
-            }
-        }
+        PacketDistributor.sendToServer(new StaffActionPacket(StaffActions.RECALL, pos));
         this.screen.onClose();
     }
 
@@ -47,6 +40,6 @@ public class CallAllMinionsButton extends AbstractMastersButton {
 
     @Override
     protected MutableComponent getName() {
-        return Component.literal("Call Minions").withStyle(ChatFormatting.BLUE);
+        return Component.translatable("gui.minions_remastered.recall").withStyle(ChatFormatting.BLUE);
     }
 }
